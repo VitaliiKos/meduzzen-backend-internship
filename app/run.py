@@ -1,5 +1,6 @@
 import uvicorn
-from watchgod import watch
+from config import get_settings
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    settings = get_settings()
+    uvicorn.run("main:app", host=settings.app_host, port=settings.app_port, reload=True)

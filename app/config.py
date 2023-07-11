@@ -1,7 +1,16 @@
-from dotenv import load_dotenv
-import os
+from functools import lru_cache
 
-load_dotenv()
+from pydantic_settings import BaseSettings
 
-DB_HOST = os.environ.get("DB_HOST")
-DB_PORT = os.environ.get("DB_PORT")
+
+class Settings(BaseSettings):
+    app_host: str
+    app_port: int
+
+    class Config:
+        env_file = "../.env"
+
+
+@lru_cache()
+def get_settings():
+    return Settings()
