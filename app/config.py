@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_port: int
     allow_host: str
     allow_port: int
+    current_port: int
 
     class Config:
         env_file = "../.env"

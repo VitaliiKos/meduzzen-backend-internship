@@ -6,7 +6,7 @@ app = FastAPI()
 
 origins = [
     settings.allow_host + ':' + str(settings.allow_port),
-    "http://localhost:3000"
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
@@ -21,9 +21,8 @@ app.add_middleware(
 
 @app.get("/")
 async def health_check():
-    return 'Hello, Docker!'
-    #     {
-    #     "status_code": 200,
-    #     "detail": "ok",
-    #     "result": "working"
-    # }
+    return {
+        "status_code": 200,
+        "detail": "ok",
+        "result": "working"
+    }

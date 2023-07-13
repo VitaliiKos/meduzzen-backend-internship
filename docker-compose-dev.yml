@@ -5,11 +5,9 @@ services:
     build:
       context: .
     ports:
-      - "8888:8000"
+      - "${CURRENT_PORT}:${APP_PORT}"
     env_file:
       - .env
     volumes:
       - ./app:/app
     restart: on-failure
-    command: >
-      sh -c "python run.py runserver 0.0.0.0:8000"
