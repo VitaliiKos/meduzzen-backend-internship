@@ -5,7 +5,7 @@ Command venv\Scripts\activate.bat - for Windows; source venv/bin/activate - for 
 
 ## requirements
 
-Then you need to install the dependencies with the pip install -r requirements.txt command.
+Install the required dependencies using the `pipenv install` command.
 
 ## run app
 

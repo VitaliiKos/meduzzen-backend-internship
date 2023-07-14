@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "${CURRENT_PORT}:${APP_PORT}"
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app
+    restart: on-failure
