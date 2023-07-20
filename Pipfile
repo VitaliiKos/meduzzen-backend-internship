@@ -12,9 +12,14 @@ pydantic-settings = "*"
 httpx = "*"
 pytest = "*"
 pytest-asyncio = "*"
+databases = "*"
+sqlalchemy = "*"
+alembic = "*"
+psycopg2 = "*"
+asyncpg = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.11"
-#python_full_version = "3.11.2"
+python_full_version = "3.11.2"

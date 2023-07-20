@@ -9,8 +9,14 @@ class Settings(BaseSettings):
     allow_port: int
     current_port: int
 
+    db_host: str
+    db_port: int
+    db_user: str
+    db_pass: str
+    db_name: str
+
     class Config:
-        env_file = "../.env"
+        env_file = ".env"
 
 
 @lru_cache()

@@ -6,7 +6,6 @@ app = FastAPI()
 
 origins = [
     settings.allow_host + ':' + str(settings.allow_port),
-    "http://localhost:3000",
 ]
 
 app.add_middleware(
