@@ -17,6 +17,9 @@ sqlalchemy = "*"
 alembic = "*"
 psycopg2 = "*"
 asyncpg = "*"
+redis = "*"
+asyncio-redis = "*"
+fastapi-cache2 = {extras = ["redis"], version = "*"}
 
 [dev-packages]
 

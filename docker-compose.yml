@@ -12,14 +12,18 @@ services:
     volumes:
       - .:/app
     environment:
-      DATABASE_URL: "postgresql://tamtik:root@postgres:5432/postgres"
-      REDIS_URL: "redis://redis:6379/0"
+      DATABASE_URL: "postgresql+asyncpg://tamtik:root@localhost:5432/postgres"
+      REDIS_URL: "redis://redis_db:6379/0"
     restart: on-failure
 
   redis:
     image: "redis:latest"
     ports:
       - "6379:6379"
+    command: redis-server
+    volumes:
+      - cache:/data
+    restart: on-failure
 
   postgres:
     image: "postgres:latest"
@@ -28,7 +32,7 @@ services:
     environment:
       POSTGRES_USER: tamtik
       POSTGRES_PASSWORD: root
-      POSTGRES_DB: postgres
+      POSTGRES_DB: root
     ports:
       - "5432:5432"
 volumes:

@@ -1,10 +1,12 @@
-# import asyncio
-# from redis import asyncio as aioredis
-#
-# REDIS_URL = "redis://:myredispassword@redis"
-#
-# async def get_redis():
-#     redis = await aioredis.create_redis_pool(REDIS_URL)
-#     yield redis
-#     redis.close()
-#     await redis.wait_closed()
+import asyncio_redis
+
+
+async def check_redis_connection():
+    try:
+        connection = await asyncio_redis.Connection.create(host='redis', port=6379)
+        response = await connection.ping()
+        connection.close()
+        return response == b'PONG'
+
+    except Exception as error:
+        return error
