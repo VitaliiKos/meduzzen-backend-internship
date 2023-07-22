@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     redis_port: int
 
     class Config:
-        env_file = ".env"
+        env_file = "../.env"
 
 
 @lru_cache()
