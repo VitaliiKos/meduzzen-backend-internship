@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     ports:
-      - "${ALLOW_PORT}:${APP_PORT}"
+      - "${APP_PORT}:${APP_PORT}"
     depends_on:
       - redis
       - postgres
