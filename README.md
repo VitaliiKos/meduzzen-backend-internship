@@ -1,22 +1,16 @@
-# meduzzen-backend-internship
+## To run an application in a Docker environment, follow these steps:
 
-For local testing, it is necessary to create a virtual environment with the command python -m venv venv and activate it.
-Command venv\Scripts\activate.bat - for Windows; source venv/bin/activate - for Linux and MacOS.
+1. Install Docker on your system if it is not already installed. Instructions for installing Docker can be found on the official Docker website (https://www.docker.com/).
 
-## requirements
+2. Make sure you have the Dockerfile, docker-compose.yml, and nginx.conf files in your project.
 
-Install the required dependencies using the `pipenv install` command.
+3. Open a terminal or command prompt and navigate to the root directory of the project where the docker-compose.yml file is located.
 
-## run app
+4 Run the following command to build and run the container:
 
-Run the project using the command:
-python run.py
+### docker-compose up
 
-When you change your project files, the server will automatically restart to reflect the updated changes.
+This command will build and run containers according to the settings in the docker-compose.yml file.
 
-
-After that, you can go to http://localhost:8000/docs in the browser to view the available endpoints.
-
-## for run tests
-
-python -m pytest  
+After successful launch, you can access the application using your web browser by going to:
+### http://localhost.

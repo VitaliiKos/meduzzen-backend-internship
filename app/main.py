@@ -1,12 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from uvicorn import run as run_unicorn
+
+from db.postgres_db import check_postgres_connection
+from db.database import get_session
+from db.redis_db import check_redis_connection
 from config import settings
+
 
 app = FastAPI()
 
 origins = [
     settings.allow_host + ':' + str(settings.allow_port),
-    "http://localhost:3000",
 ]
 
 app.add_middleware(
@@ -26,3 +31,17 @@ async def health_check():
         "detail": "ok",
         "result": "working"
     }
+
+
+@app.get("/base_status")
+async def base_status(session=Depends(get_session)):
+    postgres_status = await check_postgres_connection()
+    redis_status = await check_redis_connection()
+    return {
+        'postgres_status': postgres_status,
+        'redis_status': redis_status
+    }
+
+
+if __name__ == "__main__":
+    run_unicorn("main:app", host=settings.app_host, port=settings.app_port, reload=True)

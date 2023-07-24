@@ -1,7 +1,6 @@
 .idea
 .venv
 .env
-Pipfile.lock
 
 __pycache__/
 .pytest_cache/

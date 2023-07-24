@@ -2,3 +2,9 @@
 */temp*
 */*/temp*
 temp?
+.git
+.cache
+__pycache__
+.idea
+venv
+/logs

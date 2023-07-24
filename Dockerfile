@@ -1,20 +1,30 @@
-FROM python:3.11-alpine
+FROM python:3.11.2-alpine
 
 MAINTAINER Vitalii
 
 ENV PYTHONUNBUFFERED=1
 
-RUN mkdir /app
-WORKDIR /app
+RUN mkdir /fastapi_app
+WORKDIR /fastapi_app
 
-COPY Pipfile* /tmp
+# Install system dependencies for PostgreSQL development (if required)
+RUN apk update && apk add --no-cache postgresql-dev gcc musl-dev
 
+# Install pipenv
 RUN pip install --upgrade pip && pip install pipenv
 
-RUN cd /tmp\
-    && pipenv lock\
-    && pipenv requirements > requirements.txt\
-    && pip install -r requirements.txt
+# Copy the Pipfile and Pipfile.lock into the container
+COPY Pipfile Pipfile.lock /fastapi_app/
+
+# Install project dependencies using pipenv
+RUN pipenv install --system --deploy --ignore-pipfile
+RUN pip install python-multipart python-dotenv
+
+# Copy the rest of the application files into the container
 COPY . .
 
-CMD ["python", "run.py", "--host=0.0.0.0", "--port=8000"]
+WORKDIR app
+
+EXPOSE ${APP_PORT}
+
+CMD ["python", "main.py"]
