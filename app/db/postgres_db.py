@@ -1,4 +1,4 @@
-from .database import engine
+from db.database import engine
 
 
 async def check_postgres_connection():

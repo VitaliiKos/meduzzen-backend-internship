@@ -4,22 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-fastapi = "*"
-uvicorn = "*"
-watchgod = "*"
-pydantic = "*"
-pydantic-settings = "*"
-httpx = "*"
-pytest = "*"
-pytest-asyncio = "*"
-databases = "*"
-sqlalchemy = "*"
+fastapi = {extras = ["all"], version = "*"}
+sqlalchemy = {extras = ["asyncio"], version = "*"}
 alembic = "*"
-psycopg2 = "*"
 asyncpg = "*"
+pytest-asyncio = "*"
 redis = "*"
 asyncio-redis = "*"
-fastapi-cache2 = {extras = ["redis"], version = "*"}
 
 [dev-packages]
 
