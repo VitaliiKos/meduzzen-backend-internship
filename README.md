@@ -14,3 +14,23 @@ This command will build and run containers according to the settings in the dock
 
 After successful launch, you can access the application using your web browser by going to:
 ### http://localhost.
+
+
+## Database migrations
+
+To create and apply database migrations, we use Alembic.
+
+1. Initialize the migrations:
+   ```
+   alembic init -t async migrations
+   ```
+
+2. Create automatic migrations based on changes in SQLAlchemy models:
+   ```
+   alembic revision --autogenerate -m "init"
+   ```
+
+3. Apply the migrations to the database:
+   ```
+   alembic upgrade head
+   ```

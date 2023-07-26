@@ -1,30 +1,26 @@
-from functools import lru_cache
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import find_dotenv
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=find_dotenv(filename=".env", usecwd=True), env_file_encoding='utf-8',
+                                      extra='allow')
+
     app_host: str
     app_port: int
     allow_host: str
     allow_port: int
     current_port: int
 
-    postgres_host: str
-    postgres_port: int
-    postgres_user: str
-    postgres_pass: str
-    postgres_db: str
+    postgres_host: str = 'localhost'
+    postgres_port: int = 5432
+    postgres_user: str = 'tamtik'
+    postgres_pass: str = 'root'
+    postgres_db: str = 'tamtik'
+    database_url: str = f'postgresql+asyncpg://{postgres_user}:{postgres_pass}@{postgres_host}:{postgres_port}/{postgres_db}'
 
     redis_host: str
     redis_port: int
 
-    class Config:
-        env_file = "../.env"
 
-
-@lru_cache()
-def get_settings():
-    return Settings()
-
-
-settings = get_settings()
+settings = Settings()
