@@ -2,13 +2,10 @@ from fastapi import APIRouter, Depends
 from db.database import get_session
 
 from schemas.schemas import User, UserCreate, UserUpdate, UsersListResponse, UserUpdateRequest
-import logging
 
 from services.user_service import UserService
 
 router = APIRouter()
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 user_service = UserService()
 

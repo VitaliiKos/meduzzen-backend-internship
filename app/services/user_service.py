@@ -1,11 +1,12 @@
 import logging
-from fastapi.exceptions import HTTPException, ResponseValidationError
+from fastapi.exceptions import HTTPException
 from sqlalchemy.exc import IntegrityError
 from models.models import User as UserModel
 from schemas.schemas import UserCreate
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
