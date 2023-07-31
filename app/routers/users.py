@@ -20,7 +20,6 @@ async def get_user(user_id: int, session=Depends(get_session)) -> User:
     user_service = UserService(session=session)
     user = await user_service.get_user_by_id(user_id)
     return user
-    # return await user_service.get_user_by_id(user_id)
 
 
 @router.post("/", response_model=User)
@@ -33,12 +32,12 @@ async def create_user(user_data: UserCreate, session=Depends(get_session)) -> Us
 @router.put("/{user_id}", response_model=UserUpdateRequest)
 async def update_user(user_id: int, user_data: UserUpdate, session=Depends(get_session)) -> UserUpdateRequest:
     user_service = UserService(session=session)
-    # user = user_service.update_user(user_id, user_data)
-    return await user_service.update_user(user_id, user_data)
+    user = await user_service.update_user(user_id, user_data)
+    return user
 
 
 @router.delete("/{user_id}", response_model=User)
 async def delete_user(user_id: int, session=Depends(get_session)) -> User:
     user_service = UserService(session=session)
-    # user = user_service.delete_by_id(user_id)
-    return await user_service.delete_by_id(user_id)
+    user = await user_service.delete_by_id(user_id)
+    return user
