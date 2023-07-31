@@ -1,12 +1,11 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from uvicorn import run as run_unicorn
-
 from db.postgres_db import check_postgres_connection
 from db.database import get_session
 from db.redis_db import check_redis_connection
 from config import settings
-
+from routers import users
 
 app = FastAPI()
 
@@ -42,6 +41,8 @@ async def base_status(session=Depends(get_session)):
         'redis_status': redis_status
     }
 
+
+app.include_router(users.router, prefix="/users", tags=["users"])
 
 if __name__ == "__main__":
     run_unicorn("main:app", host=settings.app_host, port=settings.app_port, reload=True)

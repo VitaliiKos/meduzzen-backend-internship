@@ -11,6 +11,8 @@ asyncpg = "*"
 pytest-asyncio = "*"
 redis = "*"
 asyncio-redis = "*"
+passlib = "*"
+bcrypt = "*"
 
 [dev-packages]
 

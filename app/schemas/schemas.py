@@ -6,7 +6,6 @@ from typing import List
 class UserBase(BaseModel):
     email: str
     username: str
-    password: str
     phone_number: str = None
     age: int = None
     city: str = None
@@ -15,9 +14,13 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+    class Config:
+        from_attributes = True
+
 
 class UserUpdate(UserBase):
-    pass
+    class Config:
+        from_attributes = True
 
 
 class UserResponseBase(UserBase):
@@ -26,14 +29,10 @@ class UserResponseBase(UserBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class User(UserResponseBase):
-    pass
-
-
-class UserResponse(UserResponseBase):
     pass
 
 
@@ -48,10 +47,26 @@ class SignUpRequestBase(BaseModel):
     password: str
 
 
-class UserUpdateRequest(BaseModel):
+class UserUpdateRequest(UserResponseBase):
+    pass
+
+
+class UserResponse(BaseModel):
+    id: int
     email: str
-    password: str
+    username: str
+    phone_number: str = None
+    age: int = None
+    city: str = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class UsersListResponse(BaseModel):
     users: List[UserResponse]
+
+    class Config:
+        from_attributes = True
