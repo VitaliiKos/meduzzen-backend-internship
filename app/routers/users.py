@@ -7,29 +7,38 @@ from services.user_service import UserService
 
 router = APIRouter()
 
-user_service = UserService()
-
 
 @router.get("/", response_model=UsersListResponse)
-async def get_users(skip: int = 0, limit: int = 10, session=Depends(get_session)):
-    return {"users": await user_service.get_all_users(skip, limit, session)}
+async def get_users(skip: int = 0, limit: int = 10, session=Depends(get_session)) -> UsersListResponse:
+    user_service = UserService(session=session)
+    users = await user_service.get_all_users(skip=skip, limit=limit)
+    return users
 
 
 @router.get("/{user_id}", response_model=User)
-async def get_user(user_id: int, session=Depends(get_session)):
-    return await user_service.get_user_by_id(user_id, session)
+async def get_user(user_id: int, session=Depends(get_session)) -> User:
+    user_service = UserService(session=session)
+    user = await user_service.get_user_by_id(user_id)
+    return user
+    # return await user_service.get_user_by_id(user_id)
 
 
 @router.post("/", response_model=User)
-async def create_user(user_data: UserCreate, session=Depends(get_session)):
-    return await user_service.create_user(user_data, session)
+async def create_user(user_data: UserCreate, session=Depends(get_session)) -> User:
+    user_service = UserService(session=session)
+    user = await user_service.create_user(user_data)
+    return user
 
 
 @router.put("/{user_id}", response_model=UserUpdateRequest)
-async def update_user(user_id: int, user_data: UserUpdate, session=Depends(get_session)):
-    return await user_service.update_user(user_id, user_data, session)
+async def update_user(user_id: int, user_data: UserUpdate, session=Depends(get_session)) -> UserUpdateRequest:
+    user_service = UserService(session=session)
+    # user = user_service.update_user(user_id, user_data)
+    return await user_service.update_user(user_id, user_data)
 
 
 @router.delete("/{user_id}", response_model=User)
-async def delete_user(user_id: int, session=Depends(get_session)):
-    return await user_service.delete_by_id(user_id, session)
+async def delete_user(user_id: int, session=Depends(get_session)) -> User:
+    user_service = UserService(session=session)
+    # user = user_service.delete_by_id(user_id)
+    return await user_service.delete_by_id(user_id)
