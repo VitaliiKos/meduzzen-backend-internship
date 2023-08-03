@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.exceptions import HTTPException
 from sqlalchemy.exc import IntegrityError
-from typing import Union, Optional
+from typing import Optional
 from fastapi.security.http import HTTPAuthorizationCredentials
 
 from core.token_verify import VerifyToken
@@ -12,7 +12,7 @@ from models.models import User as UserModel
 from core.hashing import Hasher
 from schemas.auth import UserAuthCreate
 from schemas.token import Token
-from schemas.user import UserCreate, UsersListResponse, User, UserResponse, UserUpdateRequest, UserUpdate
+from schemas.user import UserCreate, UsersListResponse, User, UserResponse, UserUpdate
 from services.jwt_service import create_jwt_token, decode_jwt_token, check_jwt_type
 from config import settings
 
@@ -68,7 +68,7 @@ class UserService:
         logger.info("Creating a new user...")
         return user
 
-    async def update_user(self, user_id: int, user_data: UserUpdate) -> User:
+    async def update_user_by_id(self, user_id: int, user_data: UserUpdate) -> User:
 
         user: Optional[User] = await self.session.get(UserModel, user_id)
         try:
@@ -86,7 +86,7 @@ class UserService:
             logger.error(f"Error updating user: {e}")
             raise HTTPException(status_code=400, detail="User with this email already exists")
 
-    async def delete_by_id(self, user_id) -> User:
+    async def delete_user_by_id(self, user_id) -> User:
         user: User | None = await self.session.get(UserModel, user_id)
         if user is None:
             logger.error(f"Error deleting user: {user_id}")
@@ -127,7 +127,7 @@ class UserService:
 
         return user
 
-    async def get_current_user(self, token) -> User:
+    async def get_or_create_user_from_token(self, token) -> User:
 
         current_email = await self.get_email_from_token(token)
         user = await self.get_user_by_email(current_email)
@@ -148,3 +148,8 @@ class UserService:
             payload = VerifyToken(token.credentials).verify()
             email = payload.get('user_email')
         return email
+
+    async def get_me(self, token) -> User:
+        current_email = await self.get_email_from_token(token)
+        user = await self.get_user_by_email(current_email)
+        return user

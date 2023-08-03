@@ -5,6 +5,8 @@ from schemas.auth import UserAuth, SignInRequest, UserAuthCreate, UserAuthRespon
 from schemas.token import Token
 from schemas.user import UserResponse, User
 from fastapi.security import HTTPBearer
+
+from services.auth import authenticate_and_get_user
 from services.user_service import UserService
 
 router = APIRouter()
@@ -29,7 +31,8 @@ async def sign_up(user_data: UserAuthCreate, session=Depends(get_session)) -> Us
 
 
 @router.get("/me", response_model=UserResponse)
-async def login_auth0(token=Depends(auth_token_schemas), session=Depends(get_session)) -> User:
-    user_service = UserService(session=session)
-    user = await user_service.get_current_user(token)
+async def get_authenticated_user(user=Depends(authenticate_and_get_user)) -> User:
     return user
+
+
+
