@@ -131,7 +131,7 @@ class UserService:
 
         current_email = await self.get_email_from_token(token)
         user = await self.get_user_by_email(current_email)
-        if user is None:
+        if user is None and current_email is None:
             raise HTTPException(status_code=400, detail="Not Found or Bad Request")
         if not user:
             user_data = UserAuthCreate(email=current_email, password=str(datetime.utcnow))
@@ -147,8 +147,6 @@ class UserService:
     @staticmethod
     async def get_email_from_token(token: Optional[HTTPAuthorizationCredentials]) -> Optional[str]:
         check_owner_jwt_type = check_jwt_type(token)
-        if check_owner_jwt_type is None:
-            return None
         if check_owner_jwt_type:
             payload = decode_jwt_token(token.credentials)
             email = payload.get('usr')
