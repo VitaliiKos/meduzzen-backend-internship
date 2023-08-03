@@ -2,12 +2,13 @@ import logging
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.exceptions import HTTPException
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from fastapi.security.http import HTTPAuthorizationCredentials
+from fastapi import HTTPException, Depends
 
 from core.token_verify import VerifyToken
+from db.database import get_session
 from models.models import User as UserModel
 from core.hashing import Hasher
 from schemas.auth import UserAuthCreate
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class UserService:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
     async def get_all_users(self, skip: int, limit: int) -> UsersListResponse:
