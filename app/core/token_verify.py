@@ -2,8 +2,8 @@ import jwt
 from config import settings
 
 
-class VerifyToken():
-    def __init__(self, token, permissions=None, scopes=None):
+class VerifyToken:
+    def __init__(self, token: str, permissions=None, scopes=None):
         self.settings = settings
         self.token = token
         self.permissions = permissions
@@ -13,8 +13,7 @@ class VerifyToken():
 
         self.jwks_client = jwt.PyJWKClient(jwks_url)
 
-    def verify(self):
-        # This gets the 'kid' from the passed token
+    def verify(self) -> dict:
         try:
             self.signing_key = self.jwks_client.get_signing_key_from_jwt(
                 self.token
