@@ -102,9 +102,8 @@ class UserService:
 
         user = await self.session.execute(UserModel.__table__.select().where(UserModel.email == email))
         user = user.first()
-        status_verify_password = Hasher.verify_password(password, user.password)
 
-        if user is None or not status_verify_password:
+        if user is None or not Hasher.verify_password(password, user.password):
             return None
         access_token = create_jwt_token(data={"sub": str(user.id), "usr": user.email, "owner": settings.owner})
         return Token(access_token=access_token, token_type="Bearer")
@@ -132,16 +131,24 @@ class UserService:
 
         current_email = await self.get_email_from_token(token)
         user = await self.get_user_by_email(current_email)
+        if user is None:
+            raise HTTPException(status_code=400, detail="Not Found or Bad Request")
         if not user:
             user_data = UserAuthCreate(email=current_email, password=str(datetime.utcnow))
             user = await self.register_user(user_data=user_data)
 
         return user
 
-    @staticmethod
-    async def get_email_from_token(token: Optional[HTTPAuthorizationCredentials]) -> str:
-        check_owner_jwt_type = check_jwt_type(token)
+    async def get_me(self, token) -> User:
+        current_email = await self.get_email_from_token(token)
+        user = await self.get_user_by_email(current_email)
+        return user
 
+    @staticmethod
+    async def get_email_from_token(token: Optional[HTTPAuthorizationCredentials]) -> Optional[str]:
+        check_owner_jwt_type = check_jwt_type(token)
+        if check_owner_jwt_type is None:
+            return None
         if check_owner_jwt_type:
             payload = decode_jwt_token(token.credentials)
             email = payload.get('usr')
@@ -150,7 +157,3 @@ class UserService:
             email = payload.get('user_email')
         return email
 
-    async def get_me(self, token) -> User:
-        current_email = await self.get_email_from_token(token)
-        user = await self.get_user_by_email(current_email)
-        return user
