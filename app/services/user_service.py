@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
 from fastapi.security.http import HTTPAuthorizationCredentials
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, status
 
 from core.token_verify import VerifyToken
 from db.database import get_session
@@ -46,10 +46,10 @@ class UserService:
 
         return UsersListResponse(users=users_list)
 
-    async def get_user_by_id(self, user_id: int) -> User:
-        user: User | None = await self.session.get(UserModel, user_id)
+    async def get_user_by_id(self, user_id: int) -> UserResponse:
+        user: UserResponse | None = await self.session.get(UserModel, user_id)
         if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         logger.info(f"Get user by id ID: {user_id}.")
 
         return user
@@ -65,18 +65,18 @@ class UserService:
         except IntegrityError as e:
             await self.session.rollback()
             logger.error(f"Error creating user: {e}")
-            raise HTTPException(status_code=400, detail="User with this email already exists")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists")
         logger.info("Creating a new user...")
         return user
 
-    async def update_user_by_id(self, user_id: int, user_data: UserUpdate) -> User:
-
-        user: Optional[User] = await self.session.get(UserModel, user_id)
+    async def update_user(self, user_id: int, user_data: UserUpdate, current_user_id: int) -> UserResponse:
+        await self.check_user_permission(user_id=user_id, current_user_id=current_user_id)
+        user = await self.get_user_by_id(user_id=user_id)
         try:
-            if user is None:
-                logger.error(f"Error updating user: {user_id}")
-                raise HTTPException(status_code=404, detail="User not found")
+
             for field, value in user_data.model_dump(exclude_unset=True).items():
+                if field == 'password':
+                    value = Hasher.get_password_hash(value)
                 setattr(user, field, value)
             await self.session.commit()
             await self.session.refresh(user)
@@ -85,18 +85,15 @@ class UserService:
 
         except IntegrityError as e:
             logger.error(f"Error updating user: {e}")
-            raise HTTPException(status_code=400, detail="User with this email already exists")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists")
 
-    async def delete_user_by_id(self, user_id) -> User:
-        user: User | None = await self.session.get(UserModel, user_id)
-        if user is None:
-            logger.error(f"Error deleting user: {user_id}")
-            raise HTTPException(status_code=404, detail="User not found")
+    async def delete_user(self, user_id: int, current_user_id: int) -> None:
+        await self.check_user_permission(user_id=user_id, current_user_id=current_user_id)
 
+        user = await self.get_user_by_id(user_id=user_id)
         await self.session.delete(user)
         await self.session.commit()
-        logger.info(f"Deleting user with ID: {user_id}.")
-        return user
+        logger.info(f"Deleting user with email: {user}.")
 
     async def authenticate_user(self, email: str, password: str) -> Optional[Token]:
 
@@ -117,7 +114,7 @@ class UserService:
         except IntegrityError as e:
             await self.session.rollback()
             logger.error(f"Error register user: {e}")
-            raise HTTPException(status_code=400, detail="User with this email already exists")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists")
         logger.info("Registering a new user...")
         return user
 
@@ -132,7 +129,7 @@ class UserService:
         current_email = await self.get_email_from_token(token)
         user = await self.get_user_by_email(current_email)
         if user is None and current_email is None:
-            raise HTTPException(status_code=400, detail="Not Found or Bad Request")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not Found or Bad Request")
         if not user:
             user_data = UserAuthCreate(email=current_email, password=str(datetime.utcnow))
             user = await self.register_user(user_data=user_data)
@@ -155,3 +152,7 @@ class UserService:
             email = payload.get('user_email')
         return email
 
+    @staticmethod
+    async def check_user_permission(user_id, current_user_id) -> None:
+        if user_id != current_user_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You don't have permission!")

@@ -15,8 +15,12 @@ class UserCreate(UserBase):
     password: str
 
 
-class UserUpdate(UserBase):
-    pass
+class UserUpdate(BaseModel):
+    username: str
+    password: str
+    phone_number: str = None
+    age: int = None
+    city: str = None
 
 
 class UserResponseBase(UserBase):
@@ -27,11 +31,6 @@ class UserResponseBase(UserBase):
 
 class User(UserResponseBase):
     pass
-
-
-class UserUpdateRequest(BaseModel):
-    email: str
-    password: str
 
 
 class UserResponse(BaseModel):

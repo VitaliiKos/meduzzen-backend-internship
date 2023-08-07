@@ -1,5 +1,5 @@
 from fastapi import Depends
-from schemas.user import User
+from models.models import User
 from services.user_service import UserService
 from fastapi.security import HTTPBearer
 
