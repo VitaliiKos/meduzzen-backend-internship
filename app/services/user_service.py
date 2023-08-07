@@ -153,6 +153,6 @@ class UserService:
         return email
 
     @staticmethod
-    async def check_user_permission(user_id, current_user_id) -> None:
+    async def check_user_permission(user_id:int, current_user_id:int) -> None:
         if user_id != current_user_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You don't have permission!")
