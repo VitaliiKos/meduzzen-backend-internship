@@ -8,7 +8,7 @@ from db.database import get_session
 from db.redis_db import check_redis_connection
 from config import settings
 
-from routers import users, login
+from routers import users_router, login_router, company_router
 
 app = FastAPI()
 
@@ -45,8 +45,9 @@ async def base_status(session=Depends(get_session)):
     }
 
 
-app.include_router(users.router, prefix="/users", tags=["users"])
-app.include_router(login.router, prefix="", tags=["login"])
+app.include_router(users_router.router, prefix="/users", tags=["users"])
+app.include_router(company_router.router, prefix="/companies", tags=["companies"])
+app.include_router(login_router.router, prefix="", tags=["login"])
 
 if __name__ == "__main__":
     run_unicorn("main:app", host=settings.app_host, port=settings.app_port, reload=True)
