@@ -3,7 +3,7 @@ from starlette.responses import Response
 
 from db.database import get_session
 
-from schemas.user import User, UserCreate, UserUpdate, UsersListResponse, UserResponse
+from schemas.user_schema import User, UserCreate, UserUpdate, UsersListResponse, UserResponse
 from services.auth import authenticate_and_get_user
 
 from services.user_service import UserService

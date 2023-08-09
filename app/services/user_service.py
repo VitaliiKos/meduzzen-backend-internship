@@ -11,9 +11,9 @@ from core.token_verify import VerifyToken
 from db.database import get_session
 from models.models import User as UserModel
 from core.hashing import Hasher
-from schemas.auth import UserAuthCreate
-from schemas.token import Token
-from schemas.user import UserCreate, UsersListResponse, User, UserResponse, UserUpdate
+from schemas.auth_schema import UserAuthCreate
+from schemas.token_schema import Token
+from schemas.user_schema import UserCreate, UsersListResponse, User, UserResponse, UserUpdate
 from services.jwt_service import create_jwt_token, decode_jwt_token, check_jwt_type
 from config import settings
 
@@ -153,6 +153,7 @@ class UserService:
         return email
 
     @staticmethod
-    async def check_user_permission(user_id:int, current_user_id:int) -> None:
+    async def check_user_permission(user_id: int, current_user_id: int) -> None:
         if user_id != current_user_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You don't have permission!")
+

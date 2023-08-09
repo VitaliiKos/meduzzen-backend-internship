@@ -1,9 +1,9 @@
 from fastapi import HTTPException, APIRouter, Depends
 
 from db.database import get_session
-from schemas.auth import UserAuth, SignInRequest, UserAuthCreate, UserAuthResponseBase
-from schemas.token import Token
-from schemas.user import UserResponse, User
+from schemas.auth_schema import UserAuth, SignInRequest, UserAuthCreate, UserAuthResponseBase
+from schemas.token_schema import Token
+from schemas.user_schema import UserResponse, User
 from fastapi.security import HTTPBearer
 
 from services.auth import authenticate_and_get_user
