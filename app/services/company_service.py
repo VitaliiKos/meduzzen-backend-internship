@@ -1,4 +1,5 @@
 import logging
+import math
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,10 +7,11 @@ from fastapi import HTTPException, Depends, status
 from db.database import get_session
 from sqlalchemy.exc import IntegrityError
 
-from models.models import Company as CompanyModel
+from models.models import Company as CompanyModel, Company
 from models.models import Employee as EmployeeModel
-from schemas.company_schema import CompanyListResponse, CompanyResponse, CompanyCreate, CompanyUpdateInfo
-from schemas.employee import EmployeeCreate
+from schemas.company_schema import CompanyListResponseWithPagination, CompanyResponse, \
+    CompanyCreate, CompanyUpdateInfo, UserCompanyRole
+from schemas.employee import EmployeeCreate, Employee
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,11 +21,15 @@ class CompanyService:
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
-    async def get_all_companies(self, skip: int, limit: int) -> CompanyListResponse:
+    async def get_all_companies(self, skip: int, limit: int) -> CompanyListResponseWithPagination:
         logger.info("Get all companies.")
-        companies = await self.session.execute(CompanyModel.__table__.select().offset(skip).limit(limit))
-        all_companies = companies.fetchall()
 
+        # companies = select(CompanyModel).where(CompanyModel.__table__.c.status == True)
+        # all_companies = await self.session.scalar(companies)
+
+        companies = await self.session.execute(
+            CompanyModel.__table__.select().where(CompanyModel.__table__.c.status == True).offset(skip).limit(limit))
+        all_companies = companies.fetchall()
         companies_list = []
 
         for company in all_companies:
@@ -36,7 +42,14 @@ class CompanyService:
                 created_at=company.created_at,
                 updated_at=company.updated_at
             ))
-        return CompanyListResponse(companies=companies_list)
+
+        items = await self.session.execute(
+            CompanyModel.__table__.select().where(CompanyModel.__table__.c.status == True))
+        total_item = len(items.all())
+        total_page = math.ceil(math.ceil(total_item / limit))
+
+        return CompanyListResponseWithPagination(data=companies_list, total_item=total_item,
+                                                 total_page=total_page)
 
     async def get_company_by_id(self, company_id: int) -> CompanyResponse:
         company: CompanyResponse | None = await self.session.get(CompanyModel, company_id)
@@ -46,7 +59,7 @@ class CompanyService:
 
         return company
 
-    async def create_company(self, current_user_id: int, company_data: CompanyCreate) -> CompanyResponse:
+    async def create_company(self, current_user_id: int, company_data: CompanyCreate) -> Company:
         company = CompanyModel(**company_data.model_dump())
 
         try:
@@ -59,7 +72,8 @@ class CompanyService:
             logger.error(f"Error creating company: {e}")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Company with this name already exists")
         logger.info("Creating a new company...")
-        return CompanyResponse(company=company)
+        return company
+        # return CompanyResponse(company=company)
 
     async def update_company(self, company_id: int, company_data: CompanyUpdateInfo,
                              current_user_id: int) -> CompanyResponse:
@@ -135,3 +149,52 @@ class CompanyService:
 
         if not employee:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You don't have permission!")
+
+    async def check_company_role(self, user_id: int, company_id: int) -> Employee:
+        query = select(EmployeeModel).where(EmployeeModel.user_id == user_id, EmployeeModel.company_id == company_id)
+        employee = await self.session.scalar(query)
+
+        return employee
+
+    async def get_my_companies(self, skip: int, limit: int, current_user_id: int) -> CompanyListResponseWithPagination:
+        logger.info("Get my companies.")
+        user_companies = await self.session.execute(
+            select(CompanyModel)
+            .join(EmployeeModel, CompanyModel.id == EmployeeModel.company_id)
+            .where(EmployeeModel.user_id == current_user_id).offset(skip).limit(limit)
+        )
+
+        companies_list = []
+
+        for company in user_companies.scalars():
+            companies_list.append(CompanyResponse(
+                id=company.id,
+                name=company.name,
+                email=company.email,
+                phone=company.phone,
+                status=company.status,
+                created_at=company.created_at,
+                updated_at=company.updated_at
+            ))
+
+        items = await self.session.execute(
+            select(CompanyModel)
+            .join(EmployeeModel, CompanyModel.id == EmployeeModel.company_id)
+            .where(EmployeeModel.user_id == current_user_id)
+        )
+        total_item = len(items.fetchall())
+
+        total_page = math.ceil(math.ceil(total_item / limit))
+
+        return CompanyListResponseWithPagination(data=companies_list, total_item=total_item,
+
+                                                 total_page=total_page)
+
+    async def get_company_by_id_with_role(self, company_id: int, current_user_id: int) -> UserCompanyRole:
+
+        employee = await self.check_company_role(user_id=current_user_id, company_id=company_id)
+
+        if not employee:
+            return UserCompanyRole(role='Guest')
+
+        return UserCompanyRole(role=employee.role)

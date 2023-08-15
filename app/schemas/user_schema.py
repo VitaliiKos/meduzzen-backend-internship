@@ -17,10 +17,13 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     username: str
-    password: str
     phone_number: str = None
     age: int = None
     city: str = None
+
+
+class UserUpdatePassword(BaseModel):
+    password: str
 
 
 class UserResponseBase(UserBase):
@@ -46,6 +49,15 @@ class UserResponse(BaseModel):
 
 class UsersListResponse(BaseModel):
     users: List[UserResponse]
+
+    class Config:
+        from_attributes = True
+
+
+class UsersListResponseWithPagination(BaseModel):
+    total_item: int
+    total_page: int
+    data: List[UserResponse]
 
     class Config:
         from_attributes = True

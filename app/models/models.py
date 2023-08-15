@@ -16,6 +16,11 @@ class Employee(Base):
     company_id: Mapped[int] = mapped_column(Integer, ForeignKey("company_table.id"))
     role = Column(String, nullable=False)
 
+    invitation_status = Column(String)  # Invitation status (accepted, rejected, pending)
+    request_status = Column(String)  # Membership request status (accepted, rejected, pending)
+    invitation_sent_at = Column(DateTime)  # Date the invitation was sent
+    request_sent_at = Column(DateTime)  # Date the request was sent
+
     # association between Employee -> Company
     firm: Mapped["Company"] = relationship("Company", back_populates="user_employees")
 
