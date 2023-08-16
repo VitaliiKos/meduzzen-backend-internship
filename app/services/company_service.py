@@ -73,7 +73,6 @@ class CompanyService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Company with this name already exists")
         logger.info("Creating a new company...")
         return company
-        # return CompanyResponse(company=company)
 
     async def update_company(self, company_id: int, company_data: CompanyUpdateInfo,
                              current_user_id: int) -> CompanyResponse:

@@ -106,7 +106,7 @@ class UserService:
 
     async def authenticate_user(self, email: str, password: str) -> Optional[Token]:
 
-        user = await self.session.execute(UserModel.__table__.select().where(UserModel.email == email))
+        user = await self.session.execute(UserModel.__table__.select().where(UserModel.__table__.c.email == email))
         user = user.first()
 
         if user is None or not Hasher.verify_password(password, user.password):
