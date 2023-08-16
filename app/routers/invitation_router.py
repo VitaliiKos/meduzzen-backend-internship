@@ -3,6 +3,7 @@ from starlette.responses import Response
 
 from schemas.employee import EmployeeRequestResponse, EmployeeInvitationResponse, EmployeeListInvitations, \
     EmployeeListRequest
+from schemas.user_schema import UsersListResponse
 from services.auth import authenticate_and_get_user
 
 from services.invation_service import InvitationService
@@ -92,10 +93,10 @@ async def get_company_invitations_list(company_id: int, invitation_status: str,
     return requests
 
 
-@router.get("/company/{company_id}/members")
+@router.get("/company/{company_id}/members", response_model=UsersListResponse)
 async def get_company_members_list(company_id: int,
                                    current_user=Depends(authenticate_and_get_user),
-                                   service: InvitationService = Depends()):
+                                   service: InvitationService = Depends()) -> UsersListResponse:
     requests = await service.get_company_members(current_user_id=current_user.id,
                                                  company_id=company_id,
                                                  )
