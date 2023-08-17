@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select
 from fastapi import HTTPException, status
 
 from models.models import Employee as EmployeeModel, User as UserModel
@@ -59,7 +59,6 @@ class InvitationService(CompanyService):
         self.session.add(new_employee)
         await self.session.commit()
 
-        # new_invitation = EmployeeRequestResponse.model_validate(new_employee, from_attributes=True)
         return new_employee
 
     async def accept_request(self, invitation_status: str, employee_id: int) -> None:
@@ -138,23 +137,15 @@ class InvitationService(CompanyService):
     async def get_company_members(self, company_id: int, skip: int, limit: int) -> UsersListResponse:
         await self.check_company_owner(company_id=company_id)
 
-        employees_invitation = await self.session.execute(
-            EmployeeModel.__table__.select().where(and_(EmployeeModel.__table__.c.company_id == company_id,
-                                                        or_(EmployeeModel.__table__.c.invitation_status == 'accept',
-                                                            EmployeeModel.__table__.c.request_status == 'accept'))
-                                                   ).offset(skip).limit(limit))
+        user_query = await self.session.execute(
+            select(UserModel)
+            .join(EmployeeModel, EmployeeModel.company_id == company_id)
+            .where(UserModel.id == EmployeeModel.user_id).offset(skip).limit(limit)
+        )
+        user_list = [UserResponse.model_validate(user, from_attributes=True) for user in
+                     user_query.scalars()]
 
-        all_employees_invitation = employees_invitation.fetchall()
-
-        members_list_res = []
-
-        for employee in all_employees_invitation:
-            get_user: UserResponse | None = await self.session.get(UserModel, employee.user_id)
-
-            user_request = UserResponse.model_validate(get_user, from_attributes=True)
-            members_list_res.append(user_request)
-
-        return UsersListResponse(users=members_list_res)
+        return UsersListResponse(users=user_list)
 
     async def remove_worker_from_company(self, company_id: int, user_id: int) -> None:
 
