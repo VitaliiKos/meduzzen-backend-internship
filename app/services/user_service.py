@@ -1,4 +1,5 @@
 import logging
+import math
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,8 @@ from models.models import User as UserModel
 from core.hashing import Hasher
 from schemas.auth_schema import UserAuthCreate
 from schemas.token_schema import Token
-from schemas.user_schema import UserCreate, UsersListResponse, User, UserResponse, UserUpdate
+from schemas.user_schema import UserCreate, User, UserResponse, UserUpdate, UserUpdatePassword, \
+    UsersListResponseWithPagination
 from services.jwt_service import create_jwt_token, decode_jwt_token, check_jwt_type
 from config import settings
 
@@ -25,26 +27,21 @@ class UserService:
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
-    async def get_all_users(self, skip: int, limit: int) -> UsersListResponse:
+    async def get_all_users(self, skip: int, limit: int) -> UsersListResponseWithPagination:
         logger.info("Get all users.")
         users = await self.session.execute(UserModel.__table__.select().offset(skip).limit(limit))
         all_users = users.fetchall()
 
-        users_list = []
+        users_list = [UserResponse.model_validate(user, from_attributes=True) for user in
+                      all_users]
 
-        for user in all_users:
-            users_list.append(UserResponse(
-                id=user.id,
-                email=user.email,
-                username=user.username,
-                phone_number=user.phone_number,
-                age=user.age,
-                city=user.city,
-                created_at=user.created_at,
-                updated_at=user.updated_at
-            ))
+        items = await self.session.execute(UserModel.__table__.select())
 
-        return UsersListResponse(users=users_list)
+        total_item = len(items.all())
+        total_page = math.ceil(math.ceil(total_item / limit))
+
+        return UsersListResponseWithPagination(data=users_list, total_item=total_item,
+                                               total_page=total_page)
 
     async def get_user_by_id(self, user_id: int) -> UserResponse:
         user: UserResponse | None = await self.session.get(UserModel, user_id)
@@ -69,7 +66,8 @@ class UserService:
         logger.info("Creating a new user...")
         return user
 
-    async def update_user(self, user_id: int, user_data: UserUpdate, current_user_id: int) -> UserResponse:
+    async def update_user(self, user_id: int, user_data: UserUpdate | UserUpdatePassword,
+                          current_user_id: int) -> UserResponse:
         await self.check_user_permission(user_id=user_id, current_user_id=current_user_id)
         user = await self.get_user_by_id(user_id=user_id)
         try:
@@ -97,7 +95,7 @@ class UserService:
 
     async def authenticate_user(self, email: str, password: str) -> Optional[Token]:
 
-        user = await self.session.execute(UserModel.__table__.select().where(UserModel.email == email))
+        user = await self.session.execute(UserModel.__table__.select().where(UserModel.__table__.c.email == email))
         user = user.first()
 
         if user is None or not Hasher.verify_password(password, user.password):
@@ -119,7 +117,7 @@ class UserService:
         return user
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        query = select(UserModel).where(UserModel.email == email)
+        query = select(UserModel).where(UserModel.__table__.c.email == email)
         user = await self.session.scalar(query)
 
         return user
@@ -156,4 +154,3 @@ class UserService:
     async def check_user_permission(user_id: int, current_user_id: int) -> None:
         if user_id != current_user_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You don't have permission!")
-

@@ -26,5 +26,18 @@ class CompanyResponse(CompanyCreate):
     updated_at: datetime
 
 
+class UserCompanyRole(BaseModel):
+    role: str | None = None
+
+
 class CompanyListResponse(BaseModel):
     companies: List[CompanyResponse]
+
+
+class CompanyListResponseWithPagination(BaseModel):
+    total_item: int
+    total_page: int
+    data: List[CompanyResponse]
+
+    class Config:
+        from_attributes = True

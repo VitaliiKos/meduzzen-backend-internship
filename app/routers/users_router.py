@@ -3,7 +3,8 @@ from starlette.responses import Response
 
 from db.database import get_session
 
-from schemas.user_schema import User, UserCreate, UserUpdate, UsersListResponse, UserResponse
+from schemas.user_schema import User, UserCreate, UserUpdate, UserResponse, UserUpdatePassword, \
+    UsersListResponseWithPagination
 from services.auth import authenticate_and_get_user
 
 from services.user_service import UserService
@@ -11,8 +12,8 @@ from services.user_service import UserService
 router = APIRouter()
 
 
-@router.get("/", response_model=UsersListResponse)
-async def get_users(skip: int = 0, limit: int = 10, session=Depends(get_session)) -> UsersListResponse:
+@router.get("/", response_model=UsersListResponseWithPagination)
+async def get_users(skip: int = 0, limit: int = 5, session=Depends(get_session)) -> UsersListResponseWithPagination:
     user_service = UserService(session=session)
     users = await user_service.get_all_users(skip=skip, limit=limit)
     return users
@@ -32,9 +33,18 @@ async def create_user(user_data: UserCreate, session=Depends(get_session)) -> Us
     return user
 
 
-@router.put("/{user_id}", response_model=UserResponse)
-async def update_user(user_id: int, user_data: UserUpdate, current_user=Depends(authenticate_and_get_user),
+@router.patch("/{user_id}", response_model=UserResponse)
+async def update_user(user_id: int, user_data: UserUpdate,
+                      current_user=Depends(authenticate_and_get_user),
                       service: UserService = Depends()) -> UserResponse:
+    user = await service.update_user(user_id=user_id, user_data=user_data, current_user_id=current_user.id)
+    return user
+
+
+@router.patch("/{user_id}/change_pass", response_model=UserResponse)
+async def update_user_pass(user_id: int, user_data: UserUpdatePassword,
+                           current_user=Depends(authenticate_and_get_user),
+                           service: UserService = Depends()) -> UserResponse:
     user = await service.update_user(user_id=user_id, user_data=user_data, current_user_id=current_user.id)
     return user
 
