@@ -32,19 +32,8 @@ class UserService:
         users = await self.session.execute(UserModel.__table__.select().offset(skip).limit(limit))
         all_users = users.fetchall()
 
-        users_list = []
-
-        for user in all_users:
-            users_list.append(UserResponse(
-                id=user.id,
-                email=user.email,
-                username=user.username,
-                phone_number=user.phone_number,
-                age=user.age,
-                city=user.city,
-                created_at=user.created_at,
-                updated_at=user.updated_at
-            ))
+        users_list = [UserResponse.model_validate(user, from_attributes=True) for user in
+                      all_users]
 
         items = await self.session.execute(UserModel.__table__.select())
 
@@ -128,7 +117,7 @@ class UserService:
         return user
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        query = select(UserModel).where(UserModel.email == email)
+        query = select(UserModel).where(UserModel.__table__.c.email == email)
         user = await self.session.scalar(query)
 
         return user

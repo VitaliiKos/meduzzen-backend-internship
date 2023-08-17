@@ -46,7 +46,3 @@ class Member(BaseModel):
     user: UserResponse
     role: str
 
-# class Invitation(BaseModel):
-#     id: int
-#     user_id: int
-#     company_id: int
