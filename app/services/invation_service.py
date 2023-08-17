@@ -49,6 +49,15 @@ class InvitationService(CompanyService):
         existing_employee.role = 'Member'
         await self.session.commit()
 
+    async def reject_invitation(self, employee_id: int) -> None:
+        existing_employee: EmployeeModel | None = await self.session.get(EmployeeModel, employee_id)
+
+        await self.checking_for_presence_connections_between_user_company_for_accept(candidate=existing_employee)
+
+        existing_employee.invitation_status = 'Reject'
+        existing_employee.created_at = datetime.utcnow()
+        await self.session.commit()
+
     async def send_request(self, invitation_status: str, company_id: int) -> EmployeeModel:
 
         await self.checking_for_presence_connections_between_user_company(company_id=company_id, user_id=self.user.id)
@@ -71,6 +80,16 @@ class InvitationService(CompanyService):
         existing_employee.request_status = invitation_status
         existing_employee.created_at = datetime.utcnow()
         existing_employee.role = 'Member'
+        await self.session.commit()
+
+    async def reject_request(self, employee_id: int) -> None:
+        existing_employee: EmployeeModel | None = await self.session.get(EmployeeModel, employee_id)
+
+        await self.check_company_owner(company_id=existing_employee.company_id)
+        await self.check_candidate_for_request(candidate=existing_employee)
+
+        existing_employee.request_status = 'Reject'
+        existing_employee.created_at = datetime.utcnow()
         await self.session.commit()
 
     async def get_user_invitations(self, skip: int, limit: int,
@@ -167,7 +186,7 @@ class InvitationService(CompanyService):
 
         await self.checking_for_presence_connections_between_user_company_for_remove_user(company_id=company_id,
                                                                                           user_id=self.user.id)
-        await self.check_is_user_member(company_id=company_id)
+        await self.check_is_user_member(company_id=company_id, user_id=self.user.id)
 
         stmt = select(EmployeeModel).where(EmployeeModel.company_id == company_id,
                                            EmployeeModel.user_id == self.user.id)
@@ -177,6 +196,48 @@ class InvitationService(CompanyService):
             await self.session.delete(employee_invitation)
 
         await self.session.commit()
+
+    async def member_to_admin(self, user_id: int, company_id: int):
+
+        await self.check_company_owner(company_id=company_id)
+        await self.check_is_user_member(company_id=company_id, user_id=user_id)
+        existing_employee = await self.session.execute(
+            select(EmployeeModel).where(EmployeeModel.company_id == company_id,
+                                        EmployeeModel.user_id == user_id))
+
+        worker = existing_employee.scalar()
+
+        worker.role = 'Admin'
+        worker.created_at = datetime.utcnow()
+        await self.session.commit()
+
+    async def admin_to_member(self, user_id: int, company_id: int):
+
+        await self.check_company_owner(company_id=company_id)
+        await self.check_is_user_member(company_id=company_id, user_id=user_id)
+        existing_employee = await self.session.execute(
+            select(EmployeeModel).where(EmployeeModel.company_id == company_id,
+                                        EmployeeModel.user_id == user_id))
+
+        worker = existing_employee.scalar()
+
+        worker.role = 'Member'
+        worker.created_at = datetime.utcnow()
+        await self.session.commit()
+
+    async def get_company_admins(self, company_id: int, skip: int, limit: int) -> list[UserResponse]:
+        await self.check_company_owner(company_id=company_id)
+
+        user_query = await self.session.execute(
+            select(UserModel)
+            .join(EmployeeModel, EmployeeModel.company_id == company_id)
+            .where(EmployeeModel.__table__.c.role == 'Admin')
+            .where(UserModel.id == EmployeeModel.user_id).offset(skip).limit(limit)
+        )
+        user_list = [UserResponse.model_validate(user, from_attributes=True) for user in
+                     user_query.scalars()]
+
+        return user_list
 
     async def checking_for_presence_connections_between_user_company(self, company_id: int, user_id: int) -> None:
         existing_employee = await self.session.execute(
@@ -218,13 +279,13 @@ class InvitationService(CompanyService):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                                 detail="This employee already works for your company.")
 
-    async def check_is_user_member(self, company_id: int):
+    async def check_is_user_member(self, company_id: int, user_id: int):
         query = await self.session.execute(
-            select(EmployeeModel).where(EmployeeModel.__table__.c.user_id == self.user.id,
+            select(EmployeeModel).where(EmployeeModel.__table__.c.user_id == user_id,
                                         EmployeeModel.__table__.c.company_id == company_id))
         employee = query.scalars().first()
 
-        if not employee or employee.role != 'Member':
+        if not employee or employee.role == 'Candidate':
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail="Not Found.")
 

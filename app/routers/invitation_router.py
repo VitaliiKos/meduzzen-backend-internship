@@ -5,7 +5,6 @@ from models.models import Employee
 from schemas.employee import EmployeeRequestResponse, EmployeeInvitationResponse, EmployeeListInvitations, \
     EmployeeListRequest
 from schemas.user_schema import UsersListResponse
-from services.auth import authenticate_and_get_user
 
 from services.invation_service import InvitationService
 
@@ -33,6 +32,12 @@ async def accept_invitation(employee_id: int, invitation_status: str = 'accept',
     return Response(status_code=status.HTTP_200_OK)
 
 
+@router.get("/{action_id}/reject_invite", status_code=status.HTTP_204_NO_CONTENT)
+async def reject_invitation(employee_id: int, service: InvitationService = Depends()) -> Response:
+    await service.reject_invitation(employee_id=employee_id)
+    return Response(status_code=status.HTTP_200_OK)
+
+
 @router.get("/action/create_from_user/company/{company_id}/", response_model=EmployeeRequestResponse)
 async def send_request_from_user(invitation_status: str, company_id: int,
                                  service: InvitationService = Depends()) -> Employee:
@@ -44,6 +49,12 @@ async def send_request_from_user(invitation_status: str, company_id: int,
 @router.get("/{action_id}/cancel_request", status_code=status.HTTP_204_NO_CONTENT)
 async def cancel_request(employee_id: int, service: InvitationService = Depends()) -> Response:
     await service.cancel_invitation_request(employee_id=employee_id)
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.get("/{action_id}/reject_request", status_code=status.HTTP_204_NO_CONTENT)
+async def reject_request(employee_id: int, service: InvitationService = Depends()) -> Response:
+    await service.reject_request(employee_id=employee_id)
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -104,3 +115,22 @@ async def remove_worker_from_company_by_owner(company_id: int, user_id: int,
 async def resign_from_the_company(company_id: int, service: InvitationService = Depends()) -> Response:
     await service.leave_company(company_id=company_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/action/{action_id}/add_to_admin/", status_code=status.HTTP_200_OK)
+async def add_member_to_admin(user_id: int, company_id: int, service: InvitationService = Depends()) -> Response:
+    await service.member_to_admin(company_id=company_id, user_id=user_id)
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.get("/action/{action_id}/remove_member_from_admin/", status_code=status.HTTP_200_OK)
+async def remove_member_from_admin(user_id: int, company_id: int, service: InvitationService = Depends()) -> Response:
+    await service.admin_to_member(company_id=company_id, user_id=user_id)
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.get("/action/{company_id}/get_list_of_admins/", response_model=UsersListResponse)
+async def get_admin_list(company_id: int, skip: int = 0, limit: int = 5,
+                         service: InvitationService = Depends()) -> UsersListResponse:
+    admins_list = await service.get_company_admins(company_id=company_id, skip=skip, limit=limit)
+    return UsersListResponse(users=admins_list)
