@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, status
 from starlette.responses import Response
 from schemas.quiz_schemas import CreateQuizRequest, QuizSchemaResponse, QuizSchema, UpdateQuizRequest, \
-    UpdateQuestionRequest, UpdateQuestionResponse, AnswerSchemaCreate, AnswerSchemaResponse
+    UpdateQuestionRequest, UpdateQuestionResponse, AnswerSchemaCreate, AnswerSchemaResponse, CreateQuestionResponse, \
+    QuestionSchemaCreate
 from services.quizzes__service import QuizzesService
 
 router = APIRouter()
@@ -60,3 +61,31 @@ async def update_question_answer(question_id: int, answer_id: int, request_data:
                                                   answer_text=request_data.answer_text,
                                                   is_correct=request_data.is_correct)
     return AnswerSchemaResponse.model_validate(answer, from_attributes=True)
+
+
+@router.delete("/quiz/question/{question_id}/answer/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_question_answer(quiz_id: int, answer_id: int, service: QuizzesService = Depends()) -> Response:
+    await service.delete_question_answer(quiz_id=quiz_id, answer_id=answer_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/quiz/question/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_quiz_question(quiz_id: int, question_id: int, service: QuizzesService = Depends()) -> Response:
+    await service.delete_quiz_question(quiz_id=quiz_id, question_id=question_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/quiz/{quiz_id}/question/", response_model=CreateQuestionResponse)
+async def create_quiz_question(quiz_id: int, request_data: QuestionSchemaCreate,
+                               service: QuizzesService = Depends()) -> CreateQuestionResponse:
+    question = await service.create_quiz_question(quiz_id=quiz_id, question_text=request_data.question_text,
+                                                  answers=request_data.answers)
+    return CreateQuestionResponse.model_validate(question, from_attributes=True)
+
+
+@router.post("/quiz/question/{question_id}/answer/{answer_id}", response_model=AnswerSchemaResponse)
+async def create_question_answer(question_id: int, answers_data: AnswerSchemaCreate,
+                                 service: QuizzesService = Depends()):
+    question = await service.create_question_answer(question_id=question_id, answer_text=answers_data.answer_text,
+                                                    is_correct=answers_data.is_correct)
+    return AnswerSchemaResponse.model_validate(question, from_attributes=True)

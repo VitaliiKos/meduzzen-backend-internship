@@ -17,7 +17,6 @@ class AnswerSchemaResponse(BaseModel):
 
 class QuestionSchemaCreate(BaseModel):
     question_text: str
-
     answers: List[AnswerSchemaCreate]
 
 
@@ -75,7 +74,15 @@ class UpdateQuestionRequest(BaseModel):
     question_text: str
 
 
+# class CreateQuestionRequest(UpdateQuestionRequest):
+#     answers_data: [AnswerSchemaCreate]
+
+
 class UpdateQuestionResponse(BaseModel):
     id: int
     quiz_id: int
     question_text: str
+
+
+class CreateQuestionResponse(UpdateQuestionResponse):
+    pass
