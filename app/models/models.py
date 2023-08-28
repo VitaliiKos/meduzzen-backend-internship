@@ -42,7 +42,7 @@ class User(Base):
 
     # many-to-many relationship to Employee, bypassing the `Employee` class
     companies: Mapped[List['Company']] = relationship("Company", secondary='employee_table', back_populates="users"
-                                                      )
+                                                      , overlaps="firm")
     # association between User -> Employee -> Company
     company_employees: Mapped[List["Employee"]] = relationship("Employee", back_populates="worker")
 
@@ -58,7 +58,49 @@ class Company(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=func.now(), nullable=False)
 
     # many-to-many relationship to Parent, bypassing the `Association` class
-    users: Mapped[List["User"]] = relationship("User", secondary="employee_table", back_populates="companies")
+    users: Mapped[List["User"]] = relationship("User", secondary="employee_table", back_populates="companies",
+                                               overlaps="firm")
 
     # association between Child -> Association -> Parent
-    user_employees: Mapped[List["Employee"]] = relationship("Employee", back_populates="firm")
+    user_employees: Mapped[List["Employee"]] = relationship("Employee", back_populates="firm",
+                                                            overlaps="companies,users")
+
+    # Relationship to quizzes
+    quizzes: Mapped[List["Quiz"]] = relationship("Quiz", back_populates="company")
+
+
+class Quiz(Base):
+    __tablename__ = 'quiz_table'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("company_table.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_table.id"))
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    frequency_in_days = Column(Integer, nullable=False)
+
+    # Relationship to questions
+    questions: Mapped[List['Question']] = relationship("Question", cascade="all", back_populates="quiz")
+    company: Mapped["Company"] = relationship("Company", back_populates="quizzes")
+
+
+class Question(Base):
+    __tablename__ = 'question_table'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    quiz_id: Mapped[int] = mapped_column(Integer, ForeignKey("quiz_table.id"))
+    question_text = Column(String, nullable=False)
+
+    # Relationship to answers
+    answers: Mapped[List['Answer']] = relationship("Answer", cascade="all", back_populates="question")
+    quiz: Mapped["Quiz"] = relationship("Quiz", back_populates="questions")
+
+
+class Answer(Base):
+    __tablename__ = 'answer_table'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    question_id: Mapped[int] = mapped_column(Integer, ForeignKey("question_table.id"))
+    answer_text = Column(String, nullable=False)
+    is_correct = Column(BOOLEAN, default=False)
+    question: Mapped["Question"] = relationship("Question", back_populates="answers")

@@ -61,3 +61,27 @@ class UsersListResponseWithPagination(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MemberResponse(BaseModel):
+    id: int
+    email: str
+    username: str | None = None
+    phone_number: str | None = None
+    age: int | None = None
+    city: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    role: str
+    employee_id: int
+    request_status: str | None = None
+    invitation_status: str | None = None
+
+
+class MembersListResponseWithPagination(BaseModel):
+    total_item: int
+    total_page: int
+    data: List[MemberResponse]
+
+    class Config:
+        from_attributes = True

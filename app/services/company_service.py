@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from models.models import Company as CompanyModel, Company, User
 from models.models import Employee as EmployeeModel
 from schemas.company_schema import CompanyListResponseWithPagination, CompanyResponse, \
-    CompanyCreate, CompanyUpdateInfo, UserCompanyRole
+    CompanyCreate, CompanyUpdateInfo, UserCompanyRole, MyCompanyResponse, MyCompaniesListResponseWithPagination
 from schemas.employee import EmployeeCreate, Employee
 from services.auth import authenticate_and_get_user
 
@@ -131,36 +131,45 @@ class CompanyService:
         await self.session.refresh(employee)
         logger.info("Creating a new company...")
 
-    async def get_my_companies(self, skip: int, limit: int, current_user_id: int) -> CompanyListResponseWithPagination:
+    async def get_my_companies(self, skip: int, limit: int,
+                               current_user_id: int) -> MyCompaniesListResponseWithPagination:
         logger.info("Get my companies.")
-        user_companies = await self.session.execute(
-            select(CompanyModel)
-            .join(EmployeeModel, CompanyModel.id == EmployeeModel.company_id)
-            .where(EmployeeModel.user_id == current_user_id).offset(skip).limit(limit)
-        )
 
-        companies_list = [CompanyResponse.model_validate(company, from_attributes=True) for company in
-                          user_companies.scalars()]
+        user_companies = select(CompanyModel, EmployeeModel.role, EmployeeModel.id).join(EmployeeModel,
+                                                                                         CompanyModel.id == EmployeeModel.company_id).where(
+            EmployeeModel.user_id == current_user_id, EmployeeModel.__table__.c.role != 'Candidate').offset(skip).limit(
+            limit)
+
+        companies = (await self.session.execute(user_companies)).all()
+        companies_list = [
+            MyCompanyResponse(
+                id=company.id,
+                name=company.name,
+                phone=company.phone,
+                email=company.email,
+                status=company.status,
+                role=role,
+                employee_id=employee_id
+            )
+            for company, role, employee_id in companies
+        ]
 
         items = await self.session.execute(
-            select(CompanyModel)
-            .join(EmployeeModel, CompanyModel.id == EmployeeModel.company_id)
-            .where(EmployeeModel.user_id == current_user_id)
+            select(CompanyModel, EmployeeModel.role, EmployeeModel.id).join(EmployeeModel,
+                                                                            CompanyModel.id == EmployeeModel.company_id).where(
+                EmployeeModel.user_id == current_user_id, EmployeeModel.__table__.c.role != 'Candidate')
         )
         total_item = len(items.fetchall())
 
         total_page = math.ceil(math.ceil(total_item / limit))
 
-        return CompanyListResponseWithPagination(data=companies_list, total_item=total_item,
-
-                                                 total_page=total_page)
+        return MyCompaniesListResponseWithPagination(data=companies_list, total_item=total_item, total_page=total_page)
 
     async def check_company_owner(self, company_id: int) -> None:
         query = select(EmployeeModel).where(EmployeeModel.user_id == self.user.id,
                                             EmployeeModel.company_id == company_id)
         employee = await self.session.scalar(query)
-
-        if not employee:
+        if not employee or employee.role.strip().lower() != 'owner':
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You don't have permission!")
 
     async def check_company_role(self, user_id: int, company_id: int) -> Employee:

@@ -46,3 +46,20 @@ class Member(BaseModel):
     user: UserResponse
     role: str
 
+
+class InvitationsListResponseWithPagination(BaseModel):
+    total_item: int
+    total_page: int
+    data: List[EmployeeInvitationResponse]
+
+    class Config:
+        from_attributes = True
+
+
+class RequestsListResponseWithPagination(BaseModel):
+    total_item: int
+    total_page: int
+    data: List[EmployeeRequestResponse]
+
+    class Config:
+        from_attributes = True
