@@ -85,7 +85,7 @@ async def create_quiz_question(quiz_id: int, request_data: QuestionSchemaCreate,
 
 @router.post("/quiz/question/{question_id}/answer/{answer_id}", response_model=AnswerSchemaResponse)
 async def create_question_answer(question_id: int, answers_data: AnswerSchemaCreate,
-                                 service: QuizzesService = Depends()):
+                                 service: QuizzesService = Depends()) -> AnswerSchemaResponse:
     question = await service.create_question_answer(question_id=question_id, answer_text=answers_data.answer_text,
                                                     is_correct=answers_data.is_correct)
     return AnswerSchemaResponse.model_validate(question, from_attributes=True)
