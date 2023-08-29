@@ -4,7 +4,7 @@ from starlette.responses import Response
 from db.database import get_session
 from models.models import Company
 from schemas.company_schema import CompanyListResponseWithPagination, CompanyResponse, \
-    CompanyCreate, CompanyUpdateInfo, UserCompanyRole
+    CompanyCreate, CompanyUpdateInfo, UserCompanyRole, MyCompaniesListResponseWithPagination
 from services.auth import authenticate_and_get_user
 
 from services.company_service import CompanyService
@@ -33,14 +33,14 @@ async def create_company(company_data: CompanyCreate, current_user=Depends(authe
     return company
 
 
-@router.put("/company/{company_id}/info", response_model=CompanyResponse)
+@router.patch("/company/{company_id}/info", response_model=CompanyResponse)
 async def update_company(company_id: int, company_data: CompanyUpdateInfo,
                          service: CompanyService = Depends()) -> CompanyResponse:
     company = await service.update_company(company_id=company_id, company_data=company_data)
     return company
 
 
-@router.put("/company/{company_id}/status", response_model=CompanyResponse)
+@router.patch("/company/{company_id}/status", response_model=CompanyResponse)
 async def update_company_status(company_id: int, service: CompanyService = Depends()) -> CompanyResponse:
     company = await service.update_company_status(company_id=company_id)
     return company
@@ -52,9 +52,9 @@ async def delete_company(company_id: int, service: CompanyService = Depends()) -
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/my_company/", response_model=CompanyListResponseWithPagination)
+@router.get("/my_company/", response_model=MyCompaniesListResponseWithPagination)
 async def get_my_companies(skip: int = 0, limit: int = 5, current_user=Depends(authenticate_and_get_user),
-                           service: CompanyService = Depends()) -> CompanyListResponseWithPagination:
+                           service: CompanyService = Depends()) -> MyCompaniesListResponseWithPagination:
     companies = await service.get_my_companies(skip=skip, limit=limit, current_user_id=current_user.id)
     return companies
 
