@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from starlette.responses import Response
 from schemas.quiz_schemas import CreateQuizRequest, QuizSchemaResponse, QuizSchema, UpdateQuizRequest, \
     UpdateQuestionRequest, UpdateQuestionResponse, AnswerSchemaCreate, AnswerSchemaResponse, CreateQuestionResponse, \
-    QuestionSchemaCreate
+    QuestionSchemaCreate, QuizzesListResponseWithPagination
 from services.quizzes__service import QuizzesService
 
 router = APIRouter()
@@ -23,8 +23,9 @@ async def get_quiz_by_id(quiz_id: int, service: QuizzesService = Depends()) -> Q
     return quiz
 
 
-@router.get("/quiz/company/{company_id}")
-async def get_quiz_by_company(company_id: int, skip: int = 0, limit: int = 5, service: QuizzesService = Depends()):
+@router.get("/quiz/company/{company_id}", response_model=QuizzesListResponseWithPagination)
+async def get_quiz_by_company(company_id: int, skip: int = 0, limit: int = 5,
+                              service: QuizzesService = Depends()) -> QuizzesListResponseWithPagination:
     quiz = await service.get_quiz_by_company_id(company_id=company_id, skip=skip, limit=limit)
     return quiz
 
