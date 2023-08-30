@@ -1,5 +1,5 @@
 from typing import List, Optional
-
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -27,7 +27,6 @@ class QuestionSchemaResponse(BaseModel):
     answers: List[AnswerSchemaResponse]
 
 
-# Pydantic schema for Quiz model
 class QuizSchema(BaseModel):
     id: int
     title: str
@@ -74,10 +73,6 @@ class UpdateQuestionRequest(BaseModel):
     question_text: str
 
 
-# class CreateQuestionRequest(UpdateQuestionRequest):
-#     answers_data: [AnswerSchemaCreate]
-
-
 class UpdateQuestionResponse(BaseModel):
     id: int
     quiz_id: int
@@ -86,3 +81,32 @@ class UpdateQuestionResponse(BaseModel):
 
 class CreateQuestionResponse(UpdateQuestionResponse):
     pass
+
+
+class VoteDataRequest(BaseModel):
+    vote_data: dict
+
+
+class QuizResultSchemas(BaseModel):
+    user_id: int
+    quiz_id: int
+    company_id: int
+    score: float
+    total_answers: int
+    total_question: int
+    timestamp: datetime
+
+
+class QuizResultResponse(QuizResultSchemas):
+    id: int
+
+
+class UserCompanyRatingResponse(BaseModel):
+    company_id: int
+    user_id: int
+    average_score: float
+
+
+class UserSystemRatingResponse(BaseModel):
+    user_id: int
+    average_score: float
