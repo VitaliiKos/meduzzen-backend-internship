@@ -3,7 +3,7 @@ from starlette.responses import Response
 from schemas.quiz_schemas import CreateQuizRequest, QuizSchemaResponse, QuizSchema, UpdateQuizRequest, \
     UpdateQuestionRequest, UpdateQuestionResponse, AnswerSchemaCreate, AnswerSchemaResponse, CreateQuestionResponse, \
     QuestionSchemaCreate, QuizzesListResponseWithPagination, VoteDataRequest, QuizResultResponse, \
-    UserCompanyRatingResponse, UserSystemRatingResponse
+    UserCompanyRatingResponse, UserSystemRatingResponse, UserQuizVote
 from services.quizzes__service import QuizzesService
 
 router = APIRouter()
@@ -111,3 +111,9 @@ async def user_average_in_company(company_id: int, user_id: int,
 async def user_rating_in_system(user_id: int, service: QuizzesService = Depends()) -> UserSystemRatingResponse:
     average = await service.calculate_user_rating(user_id=user_id)
     return average
+
+
+@router.get("/quiz/user/{quiz_id}", response_model=list[UserQuizVote])
+async def get_quiz_vote_from_redis(quiz_id: int, service: QuizzesService = Depends()) -> list[UserQuizVote]:
+    quiz = await service.get_quiz_votes_from_redis(quiz_id=quiz_id)
+    return quiz

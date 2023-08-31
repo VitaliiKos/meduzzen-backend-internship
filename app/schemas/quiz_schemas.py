@@ -110,3 +110,10 @@ class UserCompanyRatingResponse(BaseModel):
 class UserSystemRatingResponse(BaseModel):
     user_id: int
     average_score: float
+
+
+class UserQuizVote(BaseModel):
+    question_text: str
+    answer_text: str
+    is_correct: bool
+    correct_answer: str
