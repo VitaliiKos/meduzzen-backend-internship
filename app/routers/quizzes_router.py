@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, status
 from starlette.responses import Response
 from schemas.quiz_schemas import CreateQuizRequest, QuizSchemaResponse, QuizSchema, UpdateQuizRequest, \
     UpdateQuestionRequest, UpdateQuestionResponse, AnswerSchemaCreate, AnswerSchemaResponse, CreateQuestionResponse, \
-    QuestionSchemaCreate, QuizzesListResponseWithPagination
+    QuestionSchemaCreate, QuizzesListResponseWithPagination, VoteDataRequest, QuizResultResponse, \
+    UserCompanyRatingResponse, UserSystemRatingResponse
 from services.quizzes__service import QuizzesService
 
 router = APIRouter()
@@ -90,3 +91,23 @@ async def create_question_answer(question_id: int, answers_data: AnswerSchemaCre
     question = await service.create_question_answer(question_id=question_id, answer_text=answers_data.answer_text,
                                                     is_correct=answers_data.is_correct)
     return AnswerSchemaResponse.model_validate(question, from_attributes=True)
+
+
+@router.post("/quiz/company/{company_id}/{quiz_id}/vote", response_model=QuizResultResponse)
+async def quiz_vote(company_id: int, quiz_id: int, vote_data: VoteDataRequest,
+                    service: QuizzesService = Depends()) -> QuizResultResponse:
+    vote = await service.quiz_vote(company_id=company_id, quiz_id=quiz_id, vote_data=vote_data.vote_data)
+    return QuizResultResponse.model_validate(vote, from_attributes=True)
+
+
+@router.get("/quiz/company/{company_id}/user_average/{user_id}", response_model=UserCompanyRatingResponse)
+async def user_average_in_company(company_id: int, user_id: int,
+                                  service: QuizzesService = Depends()) -> UserCompanyRatingResponse:
+    average = await service.calculate_average_score_in_company(company_id=company_id, user_id=user_id)
+    return average
+
+
+@router.get("/quiz/user/user_rating/{user_id}", response_model=UserSystemRatingResponse)
+async def user_rating_in_system(user_id: int, service: QuizzesService = Depends()) -> UserSystemRatingResponse:
+    average = await service.calculate_user_rating(user_id=user_id)
+    return average

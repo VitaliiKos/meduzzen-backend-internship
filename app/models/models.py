@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, BOOLEAN
+from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, BOOLEAN, Float
 from datetime import datetime
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 
@@ -45,6 +45,7 @@ class User(Base):
                                                       , overlaps="firm")
     # association between User -> Employee -> Company
     company_employees: Mapped[List["Employee"]] = relationship("Employee", back_populates="worker")
+    quiz_results: Mapped[List['QuizResult']] = relationship("QuizResult", back_populates="user")
 
 
 class Company(Base):
@@ -83,6 +84,8 @@ class Quiz(Base):
     questions: Mapped[List['Question']] = relationship("Question", cascade="all", back_populates="quiz")
     company: Mapped["Company"] = relationship("Company", back_populates="quizzes")
 
+    quiz_results: Mapped[List['QuizResult']] = relationship("QuizResult", back_populates="quiz")
+
 
 class Question(Base):
     __tablename__ = 'question_table'
@@ -104,3 +107,18 @@ class Answer(Base):
     answer_text = Column(String, nullable=False)
     is_correct = Column(BOOLEAN, default=False)
     question: Mapped["Question"] = relationship("Question", back_populates="answers")
+
+
+class QuizResult(Base):
+    __tablename__ = 'quiz_result_table'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_table.id"))
+    quiz_id: Mapped[int] = mapped_column(Integer, ForeignKey("quiz_table.id"))
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("company_table.id"))
+    total_question = Column(Integer, default=0)
+    total_answers = Column(Integer, default=0)
+    score = Column(Float, default=0)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    user = relationship("User", back_populates="quiz_results")
+    quiz = relationship("Quiz", back_populates="quiz_results")
