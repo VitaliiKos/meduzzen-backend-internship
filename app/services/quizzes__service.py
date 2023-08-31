@@ -312,6 +312,7 @@ class QuizzesService(InvitationService):
                     total_answers += 1 if answer[0].is_correct else 0
                     await self.save_quiz_vote_to_redis(company_id=company_id, quiz_id=quiz_id, user_id=self.user.id,
                                                        question_text=question.question_text,
+                                                       question_id=question.id,
                                                        answer_text=answer[0].answer_text,
                                                        is_correct=answer[0].is_correct,
                                                        correct_answer=correct_answer[0].answer_text,
@@ -366,10 +367,10 @@ class QuizzesService(InvitationService):
             raise HTTPException(status_code=403, detail="You don't have permission to update this quiz")
 
     @staticmethod
-    async def save_quiz_vote_to_redis(user_id: int, company_id: int, quiz_id: int, question_text: str,
+    async def save_quiz_vote_to_redis(user_id: int, company_id: int, quiz_id: int, question_text: str, question_id: int,
                                       answer_text: str, is_correct: bool, correct_answer: str, connection) -> None:
         try:
-            answer_key = f"user:{user_id}:company:{company_id}:quiz_id:{quiz_id}:uuid{str(uuid4())}"
+            answer_key = f"user:{user_id}:company:{company_id}:quiz_id:{quiz_id}:question_id:{question_id}:uuid{str(uuid4())}"
 
             answer_data = {
                 "question_text": question_text,
@@ -401,4 +402,3 @@ class QuizzesService(InvitationService):
 
         except Exception as e:
             raise e
-
