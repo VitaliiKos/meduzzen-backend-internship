@@ -1,8 +1,10 @@
+import json
 import math
 import logging
+from uuid import uuid4
 from typing import List
 from datetime import datetime
-
+import redis.asyncio as redis
 from sqlalchemy import select, update, and_, func
 from sqlalchemy.orm import joinedload
 from fastapi import HTTPException, status
@@ -11,7 +13,7 @@ from models.models import Quiz as QuizModel, Question as QuestionModel, Answer a
     QuizResult as QuizResultModel, QuizResult
 from schemas.quiz_schemas import QuestionSchemaCreate, QuestionSchemaResponse, QuizSchema, AnswerSchemaResponse, \
     QuizSchemaResponse, QuizzesListResponseWithPagination, AnswerSchemaCreate, UserCompanyRatingResponse, \
-    UserSystemRatingResponse
+    UserSystemRatingResponse, UserQuizVote
 from services.invation_service import InvitationService
 
 logging.basicConfig(level=logging.INFO)
@@ -291,6 +293,8 @@ class QuizzesService(InvitationService):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
     async def quiz_vote(self, company_id: int, quiz_id: int, vote_data: dict) -> QuizResult:
+        connection = await redis.Redis(host='localhost', port=6379, encoding='utf-8', decode_responses=True)
+
         try:
 
             quiz = await self.get_quiz_by_id(quiz_id=quiz_id)
@@ -299,11 +303,20 @@ class QuizzesService(InvitationService):
                 raise HTTPException(status_code=404, detail="Quiz not found")
             total_answers = 0
             total_questions = 0
+
             for question in quiz.questions:
                 total_questions += 1
                 answer = list(filter(lambda x: x.id == vote_data.get(str(question.id)), question.answers))
+                correct_answer = list(filter(lambda x: x.is_correct, question.answers))
                 if answer:
                     total_answers += 1 if answer[0].is_correct else 0
+                    await self.save_quiz_vote_to_redis(company_id=company_id, quiz_id=quiz_id, user_id=self.user.id,
+                                                       question_text=question.question_text,
+                                                       question_id=question.id,
+                                                       answer_text=answer[0].answer_text,
+                                                       is_correct=answer[0].is_correct,
+                                                       correct_answer=correct_answer[0].answer_text,
+                                                       connection=connection)
             score = round(total_answers / total_questions * 100, 2)
 
             quiz_result = QuizResultModel(
@@ -318,11 +331,14 @@ class QuizzesService(InvitationService):
 
             self.session.add(quiz_result)
             await self.session.commit()
+
             return quiz_result
 
         except Exception as e:
             await self.session.rollback()
             raise e
+        finally:
+            await connection.close()
 
     async def calculate_average_score_in_company(self, user_id: int, company_id: int) -> UserCompanyRatingResponse:
         query = select(func.avg(QuizResultModel.score)).where(
@@ -336,7 +352,6 @@ class QuizzesService(InvitationService):
         average_score = round(result_score, 2) if result_score else 0
         return UserCompanyRatingResponse(company_id=company_id, user_id=user_id, average_score=average_score)
 
-    #
     async def calculate_user_rating(self, user_id: int) -> UserSystemRatingResponse:
         query = select(func.avg(QuizResultModel.score)).where(QuizResultModel.user_id == user_id).group_by(
             QuizResultModel.user_id)
@@ -350,3 +365,40 @@ class QuizzesService(InvitationService):
 
         if employee.role.strip().lower() not in ['admin', 'owner']:
             raise HTTPException(status_code=403, detail="You don't have permission to update this quiz")
+
+    @staticmethod
+    async def save_quiz_vote_to_redis(user_id: int, company_id: int, quiz_id: int, question_text: str, question_id: int,
+                                      answer_text: str, is_correct: bool, correct_answer: str, connection) -> None:
+        try:
+            answer_key = f"user:{user_id}:company:{company_id}:quiz_id:{quiz_id}:question_id:{question_id}:uuid{str(uuid4())}"
+
+            answer_data = {
+                "question_text": question_text,
+                "answer_text": answer_text,
+                "is_correct": is_correct,
+                "correct_answer": correct_answer
+            }
+
+            await connection.set(answer_key, ex=172800, value=json.dumps(answer_data))
+        except Exception as e:
+            raise e
+
+    async def get_quiz_votes_from_redis(self, quiz_id: int) -> list[UserQuizVote]:
+        try:
+            connection = await redis.Redis(host='localhost', port=6379, encoding='utf-8', decode_responses=True)
+
+            user_key_pattern = f"user:{self.user.id}:*:quiz_id:{quiz_id}:*"
+            user_keys = await connection.keys(user_key_pattern)
+            quiz_votes = []
+
+            for user_key in user_keys:
+                answer_data_json = await connection.get(user_key)
+                answer_data = json.loads(answer_data_json)
+                quiz_votes.append(answer_data)
+
+            quiz_votes = [UserQuizVote.model_validate(quiz, from_attributes=True) for quiz in quiz_votes]
+
+            return quiz_votes
+
+        except Exception as e:
+            raise e
