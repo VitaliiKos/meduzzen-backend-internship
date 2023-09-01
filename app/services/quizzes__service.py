@@ -1,6 +1,8 @@
+import csv
 import json
 import math
 import logging
+import os
 from uuid import uuid4
 from typing import List
 from datetime import datetime
@@ -8,7 +10,9 @@ import redis.asyncio as redis
 from sqlalchemy import select, update, and_, func
 from sqlalchemy.orm import joinedload
 from fastapi import HTTPException, status
+from fastapi.responses import FileResponse
 
+from config import settings
 from models.models import Quiz as QuizModel, Question as QuestionModel, Answer as AnswerModel, \
     QuizResult as QuizResultModel, QuizResult
 from schemas.quiz_schemas import QuestionSchemaCreate, QuestionSchemaResponse, QuizSchema, AnswerSchemaResponse, \
@@ -383,22 +387,119 @@ class QuizzesService(InvitationService):
         except Exception as e:
             raise e
 
-    async def get_quiz_votes_from_redis(self, quiz_id: int) -> list[UserQuizVote]:
+    async def get_user_quiz_votes_from_redis(self, quiz_id: int) -> list[UserQuizVote]:
         try:
-            connection = await redis.Redis(host='localhost', port=6379, encoding='utf-8', decode_responses=True)
-
             user_key_pattern = f"user:{self.user.id}:*:quiz_id:{quiz_id}:*"
-            user_keys = await connection.keys(user_key_pattern)
-            quiz_votes = []
+            votes_result = await self.get_data_from_redis(key_pattern=user_key_pattern)
 
-            for user_key in user_keys:
-                answer_data_json = await connection.get(user_key)
-                answer_data = json.loads(answer_data_json)
-                quiz_votes.append(answer_data)
-
-            quiz_votes = [UserQuizVote.model_validate(quiz, from_attributes=True) for quiz in quiz_votes]
-
-            return quiz_votes
+            return votes_result
 
         except Exception as e:
             raise e
+
+    async def get_current_member_votes_from_redis_for_company(self, quiz_id: int, member_id: int, company_id: int) -> \
+            list[UserQuizVote]:
+        try:
+            employee = await self.check_company_role(user_id=self.user.id, company_id=company_id)
+
+            if employee.role.strip().lower() not in ['admin', 'owner']:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You don't have permission!")
+
+            member_key_pattern = f"user:{member_id}:company:{company_id}:quiz_id:{quiz_id}:*"
+            votes_result = await self.get_data_from_redis(key_pattern=member_key_pattern)
+
+            return votes_result
+
+        except Exception as e:
+            raise e
+
+    async def export_user_quiz_results_to_csv(self, quiz_id: int) -> FileResponse:
+        try:
+            filename = str(self.user.id) + '_' + str(quiz_id) + '.csv'
+            quiz_votes = await self.get_user_quiz_votes_from_redis(quiz_id)
+            quiz_votes_list = [vote.model_dump() for vote in quiz_votes]
+            response = await self.create_csv(filename=filename, quiz_votes_list=quiz_votes_list)
+            return response
+
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Failed to export data to CSV")
+
+    async def export_company_quiz_results_for_current_member_to_csv(self, quiz_id: int, company_id: int,
+                                                                    member_id: int) -> FileResponse:
+        try:
+            filename = str(company_id) + '_' + str(member_id) + '_' + str(quiz_id) + '.csv'
+            quiz_votes = await self.get_current_member_votes_from_redis_for_company(quiz_id, company_id=company_id,
+                                                                                    member_id=member_id)
+            quiz_votes_list = [vote.model_dump() for vote in quiz_votes]
+            response = await self.create_csv(filename=filename, quiz_votes_list=quiz_votes_list)
+            return response
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Failed to export data to CSV")
+
+    async def export_quiz_results_to_json(self, quiz_id: int) -> str:
+        try:
+            quiz_votes = await self.get_user_quiz_votes_from_redis(quiz_id)
+            json_data = json.dumps(quiz_votes, indent=4)
+            return json_data
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Failed to export data to JSON")
+
+    @staticmethod
+    async def create_csv(filename: str, quiz_votes_list) -> FileResponse:
+        with open(filename, 'w') as csvfile:
+            fieldnames = list(quiz_votes_list[0].keys())
+            writer = csv.DictWriter(csvfile, delimiter=';', fieldnames=fieldnames, quoting=csv.QUOTE_NONNUMERIC)
+            writer.writeheader()
+            for row in quiz_votes_list:
+                writer.writerow(row)
+        content_length = os.path.getsize(filename)
+        response = FileResponse(path=filename, media_type="text/csv")
+        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+        response.headers["Content-Length"] = str(content_length)
+
+        return response
+
+    @staticmethod
+    async def get_data_from_redis(key_pattern: str) -> List[UserQuizVote]:
+        connection = await redis.Redis(host='localhost', port=settings.redis_port, encoding='utf-8',
+                                       decode_responses=True)
+
+        member_keys = await connection.keys(key_pattern)
+        quiz_votes = []
+
+        for user_key in member_keys:
+            answer_data_json = await connection.get(user_key)
+            answer_data = json.loads(answer_data_json)
+            quiz_votes.append(answer_data)
+
+        quiz_votes = [UserQuizVote.model_validate(quiz, from_attributes=True) for quiz in quiz_votes]
+        return quiz_votes
+
+    async def get_members_votes_by_quiz_from_redis_for_company(self, quiz_id: int, company_id: int) \
+            -> List[UserQuizVote]:
+        try:
+            employee = await self.check_company_role(user_id=self.user.id, company_id=company_id)
+
+            if employee.role.strip().lower() not in ['admin', 'owner']:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You don't have permission!")
+
+            member_key_pattern = f"*:company:{company_id}:quiz_id:{quiz_id}:*"
+            votes_result = await self.get_data_from_redis(key_pattern=member_key_pattern)
+            return votes_result
+
+        except Exception as e:
+            raise e
+
+    async def export_company_quiz_results_for_all_members_to_csv(self, quiz_id: int, company_id: int) -> FileResponse:
+        try:
+            filename = str(company_id) + '_all_members_' + str(quiz_id) + '.csv'
+            quiz_votes = await self.get_members_votes_by_quiz_from_redis_for_company(quiz_id, company_id=company_id)
+            quiz_votes_list = [vote.model_dump() for vote in quiz_votes]
+            response = await self.create_csv(filename=filename, quiz_votes_list=quiz_votes_list)
+            return response
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Failed to export data to CSV")

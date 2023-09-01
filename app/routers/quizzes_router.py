@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from starlette.responses import Response
+from starlette.responses import Response, FileResponse
 from schemas.quiz_schemas import CreateQuizRequest, QuizSchemaResponse, QuizSchema, UpdateQuizRequest, \
     UpdateQuestionRequest, UpdateQuestionResponse, AnswerSchemaCreate, AnswerSchemaResponse, CreateQuestionResponse, \
     QuestionSchemaCreate, QuizzesListResponseWithPagination, VoteDataRequest, QuizResultResponse, \
@@ -114,6 +114,43 @@ async def user_rating_in_system(user_id: int, service: QuizzesService = Depends(
 
 
 @router.get("/quiz/user/{quiz_id}", response_model=list[UserQuizVote])
-async def get_quiz_vote_from_redis(quiz_id: int, service: QuizzesService = Depends()) -> list[UserQuizVote]:
-    quiz = await service.get_quiz_votes_from_redis(quiz_id=quiz_id)
+async def get_user_quiz_vote_from_redis(quiz_id: int, service: QuizzesService = Depends()) -> list[UserQuizVote]:
+    quiz = await service.get_user_quiz_votes_from_redis(quiz_id=quiz_id)
     return quiz
+
+
+@router.get("/quiz/company/{company_id}/member/{member_id}/quiz/{quiz_id}", response_model=list[UserQuizVote])
+async def get_member_quiz_vote_from_redis(quiz_id: int, company_id: int, member_id: int,
+                                          service: QuizzesService = Depends()) -> list[UserQuizVote]:
+    quiz = await service.get_current_member_votes_from_redis_for_company(quiz_id=quiz_id, company_id=company_id,
+                                                                         member_id=member_id)
+    return quiz
+
+
+# =======================================================================================
+@router.get("/quiz/user/{quiz_id}/download_to_csv", response_class=FileResponse)
+async def export_quiz_user_results_to_csv(quiz_id: int, service: QuizzesService = Depends()) -> FileResponse:
+    csv = await service.export_user_quiz_results_to_csv(quiz_id=quiz_id)
+    return csv
+
+
+@router.get("/quiz/company/{company_id}/member/{member_id}/quiz/{quiz_id}/download_to_csv", response_class=FileResponse)
+async def export_company_member_quiz_results_to_csv(company_id: int, quiz_id: int, member_id: int,
+                                                    service: QuizzesService = Depends()) -> FileResponse:
+    csv = await service.export_company_quiz_results_for_current_member_to_csv(quiz_id=quiz_id, member_id=member_id,
+                                                                              company_id=company_id)
+    return csv
+
+
+@router.get("/quiz/company/{company_id}/members/quiz/{quiz_id}", response_model=list[UserQuizVote])
+async def get_members_votes_by_quiz_from_redis(quiz_id: int, company_id: int, service: QuizzesService = Depends()) \
+        -> list[UserQuizVote]:
+    quiz = await service.get_members_votes_by_quiz_from_redis_for_company(quiz_id=quiz_id, company_id=company_id)
+    return quiz
+
+
+@router.get("/quiz/company/{company_id}/members/quiz/{quiz_id}/download_to_csv", response_class=FileResponse)
+async def export_company_all_members_quiz_results_to_csv(company_id: int, quiz_id: int,
+                                                         service: QuizzesService = Depends()) -> FileResponse:
+    csv = await service.export_company_quiz_results_for_all_members_to_csv(quiz_id=quiz_id, company_id=company_id)
+    return csv
