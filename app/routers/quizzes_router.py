@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
-from starlette.responses import Response, FileResponse
+from fastapi.responses import Response, FileResponse
+from pydantic import Json
 from schemas.quiz_schemas import CreateQuizRequest, QuizSchemaResponse, QuizSchema, UpdateQuizRequest, \
     UpdateQuestionRequest, UpdateQuestionResponse, AnswerSchemaCreate, AnswerSchemaResponse, CreateQuestionResponse, \
     QuestionSchemaCreate, QuizzesListResponseWithPagination, VoteDataRequest, QuizResultResponse, \
@@ -154,3 +155,25 @@ async def export_company_all_members_quiz_results_to_csv(company_id: int, quiz_i
                                                          service: QuizzesService = Depends()) -> FileResponse:
     csv = await service.export_company_quiz_results_for_all_members_to_csv(quiz_id=quiz_id, company_id=company_id)
     return csv
+
+
+@router.get("/quiz/company/{company_id}/members/quiz/{quiz_id}/to_json", response_model=Json)
+async def export_company_all_members_quiz_results_to_json(company_id: int, quiz_id: int,
+                                                          service: QuizzesService = Depends()) -> Json:
+    csv = await service.export_company_all_members_quiz_results_to_json(quiz_id=quiz_id, company_id=company_id)
+    return csv
+
+
+@router.get("/quiz/company/{company_id}/member/{member_id}/quiz/{quiz_id}/download_to_json", response_model=Json)
+async def export_company_member_quiz_results_to_json(company_id: int, quiz_id: int, member_id: int,
+                                                     service: QuizzesService = Depends()) -> Json:
+    json_data = await service.export_company_quiz_results_for_current_member_to_json(quiz_id=quiz_id,
+                                                                                     member_id=member_id,
+                                                                                     company_id=company_id)
+    return json_data
+
+
+@router.get("/quiz/user/{quiz_id}/download_to_json", response_model=str)
+async def export_quiz_user_results_to_json(quiz_id: int, service: QuizzesService = Depends()) -> str:
+    json_data = await service.export_user_quiz_results_to_json(quiz_id=quiz_id)
+    return json_data

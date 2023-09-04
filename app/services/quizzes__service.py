@@ -11,6 +11,7 @@ from sqlalchemy import select, update, and_, func
 from sqlalchemy.orm import joinedload
 from fastapi import HTTPException, status
 from fastapi.responses import FileResponse
+from pydantic import Json
 
 from config import settings
 from models.models import Quiz as QuizModel, Question as QuestionModel, Answer as AnswerModel, \
@@ -300,7 +301,6 @@ class QuizzesService(InvitationService):
         connection = await redis.Redis(host='localhost', port=6379, encoding='utf-8', decode_responses=True)
 
         try:
-
             quiz = await self.get_quiz_by_id(quiz_id=quiz_id)
 
             if not quiz:
@@ -338,9 +338,9 @@ class QuizzesService(InvitationService):
 
             return quiz_result
 
-        except Exception as e:
+        except Exception as error:
             await self.session.rollback()
-            raise e
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
         finally:
             await connection.close()
 
@@ -425,6 +425,12 @@ class QuizzesService(InvitationService):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Failed to export data to CSV")
 
+    async def export_user_quiz_results_to_json(self, quiz_id: int) -> Json:
+
+        quiz_votes = await self.get_user_quiz_votes_from_redis(quiz_id)
+        json_data = await self.create_json(quiz_votes=quiz_votes)
+        return json_data
+
     async def export_company_quiz_results_for_current_member_to_csv(self, quiz_id: int, company_id: int,
                                                                     member_id: int) -> FileResponse:
         try:
@@ -438,14 +444,17 @@ class QuizzesService(InvitationService):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Failed to export data to CSV")
 
-    async def export_quiz_results_to_json(self, quiz_id: int) -> str:
-        try:
-            quiz_votes = await self.get_user_quiz_votes_from_redis(quiz_id)
-            json_data = json.dumps(quiz_votes, indent=4)
-            return json_data
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail="Failed to export data to JSON")
+    async def export_company_quiz_results_for_current_member_to_json(self, quiz_id: int, company_id: int,
+                                                                     member_id: int) -> Json:
+        employee = await self.check_company_role(user_id=self.user.id, company_id=company_id)
+
+        if employee.role.strip().lower() not in ['admin', 'owner']:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You don't have permission!")
+
+        quiz_votes = await self.get_current_member_votes_from_redis_for_company(quiz_id, member_id=member_id,
+                                                                                company_id=company_id)
+        json_data = await self.create_json(quiz_votes=quiz_votes)
+        return json_data
 
     @staticmethod
     async def create_csv(filename: str, quiz_votes_list) -> FileResponse:
@@ -503,3 +512,23 @@ class QuizzesService(InvitationService):
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Failed to export data to CSV")
+
+    async def export_company_all_members_quiz_results_to_json(self, quiz_id: int, company_id: int) -> Json:
+        employee = await self.check_company_role(user_id=self.user.id, company_id=company_id)
+
+        if employee.role.strip().lower() not in ['admin', 'owner']:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You don't have permission!")
+
+        quiz_votes = await self.get_members_votes_by_quiz_from_redis_for_company(quiz_id, company_id=company_id)
+        json_data = await self.create_json(quiz_votes=quiz_votes)
+        return json_data
+
+    @staticmethod
+    async def create_json(quiz_votes: list[UserQuizVote]):
+        try:
+            json_data = [vote.model_dump() for vote in quiz_votes]
+            json_string = json.dumps(json_data, indent=4)
+            return json_string
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Failed to export data to JSON")
