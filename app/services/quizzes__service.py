@@ -2,7 +2,7 @@ import csv
 import json
 import math
 import logging
-import os
+import io
 from uuid import uuid4
 from typing import List
 from datetime import datetime
@@ -10,7 +10,7 @@ import redis.asyncio as redis
 from sqlalchemy import select, update, and_, func
 from sqlalchemy.orm import joinedload
 from fastapi import HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from pydantic import Json
 
 from config import settings
@@ -61,7 +61,6 @@ class QuizzesService(InvitationService):
 
     async def create_quiz(self, company_id: int, title: str, description: str, frequency_in_days: int,
                           questions_data: list[QuestionSchemaCreate]) -> QuizModel:
-        await self.check_company_owner(company_id=company_id)
         employee = await self.check_company_role(user_id=self.user.id, company_id=company_id)
 
         if employee.role.strip().lower() not in ['admin', 'owner']:
@@ -413,7 +412,7 @@ class QuizzesService(InvitationService):
         except Exception as e:
             raise e
 
-    async def export_user_quiz_results_to_csv(self, quiz_id: int) -> FileResponse:
+    async def export_user_quiz_results_to_csv(self, quiz_id: int) -> Response:
         try:
             filename = str(self.user.id) + '_' + str(quiz_id) + '.csv'
             quiz_votes = await self.get_user_quiz_votes_from_redis(quiz_id)
@@ -432,7 +431,7 @@ class QuizzesService(InvitationService):
         return json_data
 
     async def export_company_quiz_results_for_current_member_to_csv(self, quiz_id: int, company_id: int,
-                                                                    member_id: int) -> FileResponse:
+                                                                    member_id: int) -> Response:
         try:
             filename = str(company_id) + '_' + str(member_id) + '_' + str(quiz_id) + '.csv'
             quiz_votes = await self.get_current_member_votes_from_redis_for_company(quiz_id, company_id=company_id,
@@ -457,18 +456,20 @@ class QuizzesService(InvitationService):
         return json_data
 
     @staticmethod
-    async def create_csv(filename: str, quiz_votes_list) -> FileResponse:
-        with open(filename, 'w') as csvfile:
-            fieldnames = list(quiz_votes_list[0].keys())
-            writer = csv.DictWriter(csvfile, delimiter=';', fieldnames=fieldnames, quoting=csv.QUOTE_NONNUMERIC)
-            writer.writeheader()
-            for row in quiz_votes_list:
-                writer.writerow(row)
-        content_length = os.path.getsize(filename)
-        response = FileResponse(path=filename, media_type="text/csv")
-        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
-        response.headers["Content-Length"] = str(content_length)
+    async def create_csv(filename: str, quiz_votes_list) -> Response:
+        output = io.StringIO()
 
+        fieldnames = list(quiz_votes_list[0].keys())
+
+        writer = csv.DictWriter(output, delimiter=';', fieldnames=fieldnames, quoting=csv.QUOTE_NONNUMERIC)
+        writer.writeheader()
+        for row in quiz_votes_list:
+            writer.writerow(row)
+
+        content = output.getvalue()
+        output.close()
+        response = Response(content=content, media_type='text/csv')
+        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
         return response
 
     @staticmethod
@@ -502,7 +503,8 @@ class QuizzesService(InvitationService):
         except Exception as e:
             raise e
 
-    async def export_company_quiz_results_for_all_members_to_csv(self, quiz_id: int, company_id: int) -> FileResponse:
+    async def export_company_quiz_results_for_all_members_to_csv(self, quiz_id: int,
+                                                                 company_id: int) -> Response:
         try:
             filename = str(company_id) + '_all_members_' + str(quiz_id) + '.csv'
             quiz_votes = await self.get_members_votes_by_quiz_from_redis_for_company(quiz_id, company_id=company_id)

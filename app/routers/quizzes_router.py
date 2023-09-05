@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import Response, FileResponse
+from fastapi.responses import Response
 from pydantic import Json
+
 from schemas.quiz_schemas import CreateQuizRequest, QuizSchemaResponse, QuizSchema, UpdateQuizRequest, \
     UpdateQuestionRequest, UpdateQuestionResponse, AnswerSchemaCreate, AnswerSchemaResponse, CreateQuestionResponse, \
     QuestionSchemaCreate, QuizzesListResponseWithPagination, VoteDataRequest, QuizResultResponse, \
@@ -129,15 +130,15 @@ async def get_member_quiz_vote_from_redis(quiz_id: int, company_id: int, member_
 
 
 # =======================================================================================
-@router.get("/quiz/user/{quiz_id}/download_to_csv", response_class=FileResponse)
-async def export_quiz_user_results_to_csv(quiz_id: int, service: QuizzesService = Depends()) -> FileResponse:
+@router.get("/quiz/user/{quiz_id}/download_to_csv", response_class=Response)
+async def export_quiz_user_results_to_csv(quiz_id: int, service: QuizzesService = Depends()) -> Response:
     csv = await service.export_user_quiz_results_to_csv(quiz_id=quiz_id)
     return csv
 
 
-@router.get("/quiz/company/{company_id}/member/{member_id}/quiz/{quiz_id}/download_to_csv", response_class=FileResponse)
+@router.get("/quiz/company/{company_id}/member/{member_id}/quiz/{quiz_id}/download_to_csv", response_class=Response)
 async def export_company_member_quiz_results_to_csv(company_id: int, quiz_id: int, member_id: int,
-                                                    service: QuizzesService = Depends()) -> FileResponse:
+                                                    service: QuizzesService = Depends()) -> Response:
     csv = await service.export_company_quiz_results_for_current_member_to_csv(quiz_id=quiz_id, member_id=member_id,
                                                                               company_id=company_id)
     return csv
@@ -150,9 +151,9 @@ async def get_members_votes_by_quiz_from_redis(quiz_id: int, company_id: int, se
     return quiz
 
 
-@router.get("/quiz/company/{company_id}/members/quiz/{quiz_id}/download_to_csv", response_class=FileResponse)
+@router.get("/quiz/company/{company_id}/members/quiz/{quiz_id}/download_to_csv", response_class=Response)
 async def export_company_all_members_quiz_results_to_csv(company_id: int, quiz_id: int,
-                                                         service: QuizzesService = Depends()) -> FileResponse:
+                                                         service: QuizzesService = Depends()) -> Response:
     csv = await service.export_company_quiz_results_for_all_members_to_csv(quiz_id=quiz_id, company_id=company_id)
     return csv
 
@@ -173,7 +174,7 @@ async def export_company_member_quiz_results_to_json(company_id: int, quiz_id: i
     return json_data
 
 
-@router.get("/quiz/user/{quiz_id}/download_to_json", response_model=str)
-async def export_quiz_user_results_to_json(quiz_id: int, service: QuizzesService = Depends()) -> str:
+@router.get("/quiz/user/{quiz_id}/download_to_json", response_model=Json)
+async def export_quiz_user_results_to_json(quiz_id: int, service: QuizzesService = Depends()) -> Json:
     json_data = await service.export_user_quiz_results_to_json(quiz_id=quiz_id)
     return json_data
