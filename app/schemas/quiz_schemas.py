@@ -117,3 +117,7 @@ class UserQuizVote(BaseModel):
     answer_text: str
     is_correct: bool
     correct_answer: str
+
+
+class ExportedCSV(BaseModel):
+    file_path: str
