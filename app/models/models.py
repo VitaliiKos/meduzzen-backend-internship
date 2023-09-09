@@ -41,8 +41,8 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=func.now(), nullable=False)
 
     # many-to-many relationship to Employee, bypassing the `Employee` class
-    companies: Mapped[List['Company']] = relationship("Company", secondary='employee_table', back_populates="users"
-                                                      , overlaps="firm")
+    companies: Mapped[List['Company']] = relationship("Company", secondary='employee_table',
+                                                      back_populates="users", overlaps="firm")
     # association between User -> Employee -> Company
     company_employees: Mapped[List["Employee"]] = relationship("Employee", back_populates="worker")
     quiz_results: Mapped[List['QuizResult']] = relationship("QuizResult", back_populates="user")
@@ -79,6 +79,7 @@ class Quiz(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     frequency_in_days = Column(Integer, nullable=False)
+    is_deleted = Column(BOOLEAN, default=False)
 
     # Relationship to questions
     questions: Mapped[List['Question']] = relationship("Question", cascade="all", back_populates="quiz")

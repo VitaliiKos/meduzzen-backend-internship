@@ -8,7 +8,7 @@ from db.database import get_session
 from db.redis_db import check_redis_connection
 from config import settings
 
-from routers import users_router, login_router, company_router, invitation_router, quizzes_router
+from routers import users_router, login_router, company_router, invitation_router, quizzes_router, analytics_router
 
 app = FastAPI()
 
@@ -49,6 +49,7 @@ app.include_router(users_router.router, prefix="/users", tags=["users"])
 app.include_router(company_router.router, prefix="/companies", tags=["companies"])
 app.include_router(invitation_router.router, prefix="/invitation", tags=["invitation"])
 app.include_router(quizzes_router.router, prefix="/quizzes", tags=["quizzes"])
+app.include_router(analytics_router.router, prefix="/analytics", tags=["analytics"])
 app.include_router(login_router.router, prefix="", tags=["login"])
 
 if __name__ == "__main__":

@@ -101,17 +101,6 @@ class QuizResultResponse(QuizResultSchemas):
     id: int
 
 
-class UserCompanyRatingResponse(BaseModel):
-    company_id: int
-    user_id: int
-    average_score: float
-
-
-class UserSystemRatingResponse(BaseModel):
-    user_id: int
-    average_score: float
-
-
 class UserQuizVote(BaseModel):
     question_text: str
     answer_text: str
