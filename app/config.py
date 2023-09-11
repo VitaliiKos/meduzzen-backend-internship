@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     auth0_api_audience: str
     auth0_issuer: str
     auth0_algorithms: str
+
+    celery_broker_url: str
+    celery_result_backend: str
+
     owner: str
 
 
