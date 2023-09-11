@@ -34,13 +34,17 @@ class InvitationService(CompanyService):
         return new_employee
 
     async def cancel_invitation_request(self, employee_id: int) -> None:
-        existing_employee = await self.session.get(EmployeeModel, employee_id)
+        try:
+            existing_employee: EmployeeModel | None = await self.session.get(EmployeeModel, employee_id)
+            await self.check_candidate_for_request(candidate=existing_employee)
 
-        await self.check_company_owner(company_id=existing_employee.company_id)
+            # await self.check_company_owner(company_id=existing_employee.company_id)
 
-        await self.session.delete(existing_employee)
-        await self.session.commit()
-
+            await self.session.delete(existing_employee)
+            await self.session.commit()
+        except Exception as error:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="BAD REQUEST.")
     async def accept_invitation(self, employee_id: int, invitation_status: str = 'accept') -> None:
         existing_employee: EmployeeModel | None = await self.session.get(EmployeeModel, employee_id)
 

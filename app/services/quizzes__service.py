@@ -19,6 +19,7 @@ from models.models import Quiz as QuizModel, Question as QuestionModel, Answer a
 from schemas.quiz_schemas import QuestionSchemaCreate, QuestionSchemaResponse, QuizSchema, AnswerSchemaResponse, \
     QuizSchemaResponse, QuizzesListResponseWithPagination, AnswerSchemaCreate, UserQuizVote
 from services.invation_service import InvitationService
+from services.notification_service import NotificationService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,6 +97,9 @@ class QuizzesService(InvitationService):
                     answer = AnswerModel(question_id=question.id, answer_text=answer_text, is_correct=is_correct)
                     self.session.add(answer)
                     await self.session.commit()
+
+            await NotificationService.create_notification(company_id=company_id, quiz_id=quiz.id, quiz_title=quiz.title)
+
             return quiz
 
         except Exception as error:
@@ -342,26 +346,6 @@ class QuizzesService(InvitationService):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
         finally:
             await connection.close()
-
-    # async def calculate_average_score_in_company(self, user_id: int, company_id: int) -> UserCompanyRatingResponse:
-    #     query = select(func.avg(QuizResultModel.score)).where(
-    #         and_(
-    #             QuizResultModel.user_id == user_id,
-    #             QuizResultModel.company_id == company_id
-    #         )
-    #     )
-    #     result = await self.session.execute(query)
-    #     result_score = result.scalar()
-    #     average_score = round(result_score, 2) if result_score else 0
-    #     return UserCompanyRatingResponse(company_id=company_id, user_id=user_id, average_score=average_score)
-
-    # async def calculate_user_rating(self, user_id: int) -> UserSystemRatingResponse:
-    #     query = select(func.avg(QuizResultModel.score)).where(QuizResultModel.user_id == user_id).group_by(
-    #         QuizResultModel.user_id)
-    #     result = await self.session.execute(query)
-    #     result_score = result.scalar()
-    #     average_score = round(result_score, 2) if result_score else 0
-    #     return UserSystemRatingResponse(user_id=user_id, average_score=average_score)
 
     async def check_user_permission_for_quiz(self, user_id: int, company_id: int) -> None:
         employee = await self.check_company_role(user_id=user_id, company_id=company_id)

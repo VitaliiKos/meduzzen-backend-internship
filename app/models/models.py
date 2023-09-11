@@ -114,7 +114,7 @@ class QuizResult(Base):
     __tablename__ = 'quiz_result_table'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_table.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_table.id", ondelete="CASCADE"))
     quiz_id: Mapped[int] = mapped_column(Integer, ForeignKey("quiz_table.id"))
     company_id: Mapped[int] = mapped_column(Integer, ForeignKey("company_table.id"))
     total_question = Column(Integer, default=0)
@@ -123,3 +123,14 @@ class QuizResult(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
     user = relationship("User", back_populates="quiz_results")
     quiz = relationship("Quiz", back_populates="quiz_results")
+
+
+class Notification(Base):
+    __tablename__ = 'notification_table'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_table.id", ondelete="CASCADE"))
+    quiz_id: Mapped[int] = mapped_column(Integer, ForeignKey("quiz_table.id", ondelete="CASCADE"))
+    massage = Column(String, nullable=False)
+    is_read = Column(BOOLEAN, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

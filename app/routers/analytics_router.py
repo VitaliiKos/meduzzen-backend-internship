@@ -10,14 +10,14 @@ from services.analytic_service import AnalyticsService
 router = APIRouter()
 
 
-@router.get("/user/{user_id}/user_average/company/{company_id}//", response_model=UserCompanyRatingResponse)
+@router.get("/user/{user_id}/user_average/company/{company_id}", response_model=UserCompanyRatingResponse)
 async def user_average_in_company(company_id: int, user_id: int,
                                   service: AnalyticsService = Depends()) -> UserCompanyRatingResponse:
     average = await service.calculate_average_score_in_company(company_id=company_id, user_id=user_id)
     return average
 
 
-@router.get("/user/{user_id}/user_system_rating/", response_model=UserSystemRatingResponse)
+@router.get("/user/{user_id}/user_system_rating", response_model=UserSystemRatingResponse)
 async def user_rating_in_system(user_id: int, service: AnalyticsService = Depends()) -> UserSystemRatingResponse:
     average = await service.calculate_user_rating(user_id=user_id)
     return average
