@@ -3,8 +3,7 @@ import math
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 from db.database import get_session, async_session
-from models.models import User as UserModel, Company as CompanyModel, Notification as NotificationModel, \
-    Employee as EmployeeModel
+from models.models import User as UserModel, Notification as NotificationModel, Employee as EmployeeModel
 from schemas.notification_schema import NotificationResponse, NotificationListResponseWithPagination
 from services.auth import authenticate_and_get_user
 from sqlalchemy import select
@@ -33,7 +32,7 @@ class NotificationService:
         return NotificationListResponseWithPagination(data=my_notification, total_item=total_item,
                                                       total_page=total_page)
 
-    async def get_notification_by_id(self, notif_id: int):
+    async def read_notification_by_id(self, notif_id: int) -> None:
         existing_notification = await self.session.get(NotificationModel, notif_id)
 
         if not existing_notification or (existing_notification.user_id != self.user.id):
@@ -41,8 +40,6 @@ class NotificationService:
 
         existing_notification.is_read = True
         await self.session.commit()
-
-        print(existing_notification.__dict__)
 
     @staticmethod
     async def create_notification(company_id: int, quiz_id: int, quiz_title: str):

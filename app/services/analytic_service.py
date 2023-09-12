@@ -84,59 +84,39 @@ class AnalyticsService:
                                                       total_page=total_page)
 
     async def list_of_average_in_all_quizzes_in_all_companies(self, user_id: int) \
-            -> List[AverageScoreInAllQuizzesInAllCompanies]:
-        stmt = select(QuizResultModel).join(QuizModel, QuizResultModel.quiz_id == QuizModel.id).where(
-            QuizResultModel.user_id == user_id)
+            -> list[AverageScoreInAllQuizzesInAllCompanies]:
+        stmt = select(QuizResultModel.quiz_id).where(QuizResultModel.user_id == user_id)
 
-        user_quiz_result = await self.session.execute(stmt)
-        quizzes_list = user_quiz_result.scalars()
+        user_quiz_id_list = (await self.session.scalars(stmt)).unique().all()
 
         average_scores_dict = {}
+        for quiz_id in user_quiz_id_list:
+            query = select(QuizResultModel).where(QuizResultModel.quiz_id == quiz_id,
+                                                  QuizResultModel.user_id == user_id).order_by(
+                QuizResultModel.timestamp)
+            quiz_results = (await self.session.scalars(query)).all()
 
-        for quiz_res in quizzes_list:
-            if quiz_res.quiz_id not in average_scores_dict:
+            scores = []
 
-                average_scores_dict[quiz_res.quiz_id] = {
-                    'quiz_id': quiz_res.quiz_id,
-                    'company_id': quiz_res.company_id,
-                    'score': [{
-                        'quiz_result_id': quiz_res.id,
-                        'timestamp': quiz_res.timestamp,
-                        'total_question': quiz_res.total_question,
-                        'total_correct_answers': quiz_res.total_answers,
-                        'average_score': round(quiz_res.total_answers / quiz_res.total_question * 100, 2),
+            total_questions = 0
+            total_answers = 0
+            for quiz_item_result in quiz_results:
+                total_questions += quiz_item_result.total_question
+                total_answers += quiz_item_result.total_answers
+                scores.append(AnalyticsUserAttempt(
+                    quiz_result_id=quiz_item_result.id,
+                    total_question=total_questions,
+                    total_correct_answers=total_answers,
+                    average_score=round(total_answers / total_questions * 100, 2),
+                    timestamp=quiz_item_result.timestamp,
+                ))
 
-                    }]
-                }
-            else:
-                total_question = average_scores_dict[quiz_res.quiz_id]['score'][-1][
-                                     'total_question'] + quiz_res.total_question
-                total_correct_answers = average_scores_dict[quiz_res.quiz_id]['score'][-1][
-                                            'total_correct_answers'] + quiz_res.total_answers
+            average_scores_dict[quiz_id] = scores
 
-                average_scores_dict[quiz_res.quiz_id]['score'].append(
-                    {
-                        'quiz_result_id': quiz_res.id,
-                        'total_question': total_question,
-                        'total_correct_answers': total_correct_answers,
-                        'average_score': round(total_correct_answers / total_question * 100, 2),
-                        'timestamp': quiz_res.timestamp
-                    }
-                )
         attempts = [
             AverageScoreInAllQuizzesInAllCompanies(
                 quiz_id=key,
-                company_id=value['company_id'],
-                score=[
-                    AnalyticsUserAttempt(
-                        quiz_result_id=score_item['quiz_result_id'],
-                        total_question=score_item['total_question'],
-                        total_correct_answers=score_item['total_correct_answers'],
-                        average_score=score_item['average_score'],
-                        timestamp=score_item['timestamp']
-                    )
-                    for score_item in value['score']
-                ]
+                score=[AnalyticsUserAttempt.model_validate(attempt, from_attributes=True) for attempt in value]
             )
             for key, value in average_scores_dict.items()
         ]
@@ -152,7 +132,8 @@ class AnalyticsService:
             .join(CompanyModel, EmployeeModel.company_id == CompanyModel.id).where(CompanyModel.id == company_id)
             .join(QuizModel, CompanyModel.id == QuizModel.company_id)
             .outerjoin(QuizResultModel,
-                       and_(QuizModel.id == QuizResultModel.quiz_id, QuizResultModel.user_id == EmployeeModel.user_id))
+                       and_(QuizModel.id == QuizResultModel.quiz_id,
+                            QuizResultModel.user_id == EmployeeModel.user_id))
             .filter(EmployeeModel.role != "Candidate")
             .group_by(EmployeeModel.id)
         )
@@ -180,66 +161,55 @@ class AnalyticsService:
         return employee_last_quiz_completion_times
 
     async def list_of_average_all_members_for_current_quiz(self, company_id: int, quiz_id: int) \
-            -> List[AverageScoreForAllMembers]:
-        stmt = select(QuizResultModel).filter(QuizResultModel.company_id == company_id,
-                                              QuizResultModel.quiz_id == quiz_id).order_by(
-            QuizResultModel.timestamp)
-
-        stmt_result = await self.session.execute(stmt)
-        quizzes_list = stmt_result.scalars()
+            -> list[AverageScoreForAllMembers]:
+        stmt = select(QuizResultModel.user_id).where(QuizResultModel.company_id == company_id,
+                                                     QuizResultModel.quiz_id == quiz_id)
+        user_id_list = (await self.session.scalars(stmt)).unique().all()
 
         average_scores_dict = {}
+        for user_id in user_id_list:
+            average_scores_dict[user_id] = {}
+            query = select(QuizResultModel).where(QuizResultModel.quiz_id == quiz_id,
+                                                  QuizResultModel.user_id == user_id).order_by(
+                QuizResultModel.timestamp)
+            quiz_results = (await self.session.scalars(query)).all()
+            scores = []
+            total_questions = 0
+            total_answers = 0
 
-        for quiz_res in quizzes_list:
-            if quiz_res.user_id not in average_scores_dict:
-                member_query = await self.session.get(UserModel, quiz_res.user_id)
-                member = UserResponse.model_validate(member_query, from_attributes=True)
+            for quiz_item_result in quiz_results:
+                total_questions += quiz_item_result.total_question
+                total_answers += quiz_item_result.total_answers
 
-                average_scores_dict[quiz_res.user_id] = {
-                    'quiz_id': quiz_res.quiz_id,
-                    'member': member,
-                    'company_id': quiz_res.company_id,
-                    'score': [{
-                        'quiz_result_id': quiz_res.id,
-                        'total_question': quiz_res.total_question,
-                        'total_correct_answers': quiz_res.total_answers,
-                        'average_score': round(quiz_res.total_answers / quiz_res.total_question * 100, 2),
-                        'timestamp': quiz_res.timestamp,
+                scores.append(AnalyticsUserAttempt(
+                    quiz_result_id=quiz_item_result.id,
+                    total_question=total_questions,
+                    total_correct_answers=total_answers,
+                    average_score=round(total_answers / total_questions * 100, 2),
+                    timestamp=quiz_item_result.timestamp,
+                ))
 
-                    }]
-                }
-            else:
-                total_question = average_scores_dict[quiz_res.user_id]['score'][-1][
-                                     'total_question'] + quiz_res.total_question
-                total_correct_answers = average_scores_dict[quiz_res.user_id]['score'][-1][
-                                            'total_correct_answers'] + quiz_res.total_answers
+            member_query = await self.session.get(UserModel, user_id)
+            member = UserResponse.model_validate(member_query, from_attributes=True)
 
-                average_scores_dict[quiz_res.user_id]['score'].append(
-                    {
-                        'quiz_result_id': quiz_res.id,
-                        'total_question': total_question,
-                        'total_correct_answers': total_correct_answers,
-                        'average_score': round(total_correct_answers / total_question * 100, 2),
-                        'timestamp': quiz_res.timestamp
-                    }
-                )
-        members = [
+            average_scores_dict[user_id]['scores'] = scores
+            average_scores_dict[user_id]['member'] = member
+
+        attempts = [
             AverageScoreForAllMembers(
-                quiz_id=key,
-                member=value['member'],
-                company_id=value['company_id'],
+                user_id=key,
+                member=value.get('member', {}),
                 score=[
                     AnalyticsUserAttempt(
-                        quiz_result_id=score_item['quiz_result_id'],
-                        total_question=score_item['total_question'],
-                        total_correct_answers=score_item['total_correct_answers'],
-                        average_score=score_item['average_score'],
-                        timestamp=score_item['timestamp']
+                        quiz_result_id=score_item.quiz_result_id,
+                        total_question=score_item.total_question,
+                        total_correct_answers=score_item.total_correct_answers,
+                        average_score=score_item.average_score,
+                        timestamp=score_item.timestamp
                     )
-                    for score_item in value['score']
+                    for score_item in value.get('scores', [])
                 ]
             )
             for key, value in average_scores_dict.items()
         ]
-
-        return members
+        return attempts

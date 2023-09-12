@@ -42,14 +42,12 @@ class AnalyticsUserAttempt(BaseModel):
 
 class AverageScoreInAllQuizzesInAllCompanies(BaseModel):
     quiz_id: int
-    company_id: int
     score: List[AnalyticsUserAttempt]
 
 
 class AverageScoreForAllMembers(BaseModel):
-    quiz_id: int
+    user_id: int
     member: UserResponse
-    company_id: int
     score: List[AnalyticsUserAttempt]
 
 
