@@ -7,7 +7,7 @@ from uuid import uuid4
 from typing import List
 from datetime import datetime
 import redis.asyncio as redis
-from sqlalchemy import select, update, and_, func
+from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 from fastapi import HTTPException, status
 from fastapi.responses import Response
@@ -17,9 +17,9 @@ from config import settings
 from models.models import Quiz as QuizModel, Question as QuestionModel, Answer as AnswerModel, \
     QuizResult as QuizResultModel, QuizResult
 from schemas.quiz_schemas import QuestionSchemaCreate, QuestionSchemaResponse, QuizSchema, AnswerSchemaResponse, \
-    QuizSchemaResponse, QuizzesListResponseWithPagination, AnswerSchemaCreate, UserCompanyRatingResponse, \
-    UserSystemRatingResponse, UserQuizVote
+    QuizSchemaResponse, QuizzesListResponseWithPagination, AnswerSchemaCreate, UserQuizVote
 from services.invation_service import InvitationService
+from services.notification_service import NotificationService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -97,6 +97,9 @@ class QuizzesService(InvitationService):
                     answer = AnswerModel(question_id=question.id, answer_text=answer_text, is_correct=is_correct)
                     self.session.add(answer)
                     await self.session.commit()
+
+            await NotificationService.create_notification(company_id=company_id, quiz_id=quiz.id, quiz_title=quiz.title)
+
             return quiz
 
         except Exception as error:
@@ -104,15 +107,17 @@ class QuizzesService(InvitationService):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
     async def get_quiz_by_company_id(self, company_id: int, skip: int, limit: int) -> QuizzesListResponseWithPagination:
-        stmt = select(QuizModel).where(QuizModel.company_id == company_id).offset(skip).limit(limit).order_by(
-            -QuizModel.id)
+        stmt = select(QuizModel).where(QuizModel.company_id == company_id,
+                                       QuizModel.is_deleted == False).offset(
+            skip).limit(limit).order_by(-QuizModel.id)
         quizzes = await self.session.execute(stmt)
         if not quizzes:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not Found')
 
         quiz_list = [QuizSchemaResponse.model_validate(quiz, from_attributes=True) for quiz in quizzes.scalars()]
 
-        items = await self.session.execute(select(QuizModel).where(QuizModel.company_id == company_id))
+        items = await self.session.execute(
+            select(QuizModel).where(QuizModel.company_id == company_id, QuizModel.is_deleted == False))
         total_item = len(items.all())
         total_page = math.ceil(math.ceil(total_item / limit))
 
@@ -129,8 +134,7 @@ class QuizzesService(InvitationService):
 
         if employee.role.strip().lower() not in ['admin', 'owner']:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You don't have permission!")
-
-        await self.session.delete(stmt)
+        stmt.is_deleted = True
         await self.session.commit()
 
     async def update_quiz(self, quiz_id: int, title: str, description: str, frequency_in_days: int):
@@ -342,26 +346,6 @@ class QuizzesService(InvitationService):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
         finally:
             await connection.close()
-
-    async def calculate_average_score_in_company(self, user_id: int, company_id: int) -> UserCompanyRatingResponse:
-        query = select(func.avg(QuizResultModel.score)).where(
-            and_(
-                QuizResultModel.user_id == user_id,
-                QuizResultModel.company_id == company_id
-            )
-        )
-        result = await self.session.execute(query)
-        result_score = result.scalar()
-        average_score = round(result_score, 2) if result_score else 0
-        return UserCompanyRatingResponse(company_id=company_id, user_id=user_id, average_score=average_score)
-
-    async def calculate_user_rating(self, user_id: int) -> UserSystemRatingResponse:
-        query = select(func.avg(QuizResultModel.score)).where(QuizResultModel.user_id == user_id).group_by(
-            QuizResultModel.user_id)
-        result = await self.session.execute(query)
-        result_score = result.scalar()
-        average_score = round(result_score, 2) if result_score else 0
-        return UserSystemRatingResponse(user_id=user_id, average_score=average_score)
 
     async def check_user_permission_for_quiz(self, user_id: int, company_id: int) -> None:
         employee = await self.check_company_role(user_id=user_id, company_id=company_id)

@@ -1,20 +1,27 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from uvicorn import run as run_unicorn
-
-
+from celery import shared_task, Celery
+import time
 from db.postgres_db import check_postgres_connection
 from db.database import get_session
 from db.redis_db import check_redis_connection
 from config import settings
 
-from routers import users_router, login_router, company_router, invitation_router, quizzes_router
+from routers import users_router, login_router, company_router, invitation_router, quizzes_router, analytics_router, \
+    notification_router
 
 app = FastAPI()
 
 origins = [
     settings.allow_host + ':' + str(settings.allow_port),
 ]
+
+celery = Celery(
+    __name__,
+    broker=settings.celery_broker_url,
+    backend=settings.celery_result_backend
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,10 +52,26 @@ async def base_status(session=Depends(get_session)):
     }
 
 
+@celery.task
+def send_push_notification(device_token: str):
+    time.sleep(10)  # simulates slow network call to firebase/sns
+    with open("notification.log", mode="a") as notification_log:
+        response = f"Successfully sent push notification to: {device_token}\n"
+        notification_log.write(response)
+
+
+@app.get("/push/{device_token}")
+async def notify(device_token: str):
+    send_push_notification.delay(device_token)
+    return {"message": "Notification sent"}
+
+
 app.include_router(users_router.router, prefix="/users", tags=["users"])
 app.include_router(company_router.router, prefix="/companies", tags=["companies"])
 app.include_router(invitation_router.router, prefix="/invitation", tags=["invitation"])
 app.include_router(quizzes_router.router, prefix="/quizzes", tags=["quizzes"])
+app.include_router(analytics_router.router, prefix="/analytics", tags=["analytics"])
+app.include_router(notification_router.router, prefix="/notification", tags=["notification"])
 app.include_router(login_router.router, prefix="", tags=["login"])
 
 if __name__ == "__main__":

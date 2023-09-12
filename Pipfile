@@ -17,6 +17,7 @@ fastapi-users = {extras = ["sqlalchemy"], version = "*"}
 python-jose = "*"
 jwt = "*"
 pyjwt = "*"
+celery = "*"
 
 [dev-packages]
 
