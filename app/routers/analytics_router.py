@@ -38,9 +38,9 @@ async def list_of_average_in_all_quizzes_in_all_companies(user_id: int, service:
 
 
 @router.get("/company/{company_id}/members/last_attempt", response_model=List[EmployeeLastQuizCompletionTime])
-async def members_last_attempt(company_id: int, skip: int = 0, limit: int = 5, service: AnalyticsService = Depends()) \
+async def members_last_attempt(company_id: int, skip: int = 0, service: AnalyticsService = Depends()) \
         -> list[EmployeeLastQuizCompletionTime]:
-    member_list = await service.members_last_attempt(company_id=company_id, skip=skip, limit=limit)
+    member_list = await service.members_last_attempt(company_id=company_id, skip=skip)
     return member_list
 
 

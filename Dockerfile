@@ -23,8 +23,11 @@ RUN pip install python-multipart python-dotenv
 # Copy the rest of the application files into the container
 COPY . .
 
+#WORKDIR /fastapi_app/app
 WORKDIR app
 
 EXPOSE ${APP_PORT}
+#RUN chmod +x /fastapi_app/run_celery_and_flower.sh
 
+#ENTRYPOINT ["sh","/fastapi_app/run_celery_and_flower.sh"]
 CMD ["python", "main.py"]

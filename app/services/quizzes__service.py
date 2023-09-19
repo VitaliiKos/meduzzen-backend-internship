@@ -301,7 +301,7 @@ class QuizzesService(InvitationService):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
 
     async def quiz_vote(self, company_id: int, quiz_id: int, vote_data: dict) -> QuizResult:
-        connection = await redis.Redis(host='localhost', port=6379, encoding='utf-8', decode_responses=True)
+        connection = await redis.Redis(host=settings.redis_host, port=settings.redis_port, encoding='utf-8', decode_responses=True)
 
         try:
             quiz = await self.get_quiz_by_id(quiz_id=quiz_id)
@@ -458,7 +458,7 @@ class QuizzesService(InvitationService):
 
     @staticmethod
     async def get_data_from_redis(key_pattern: str) -> List[UserQuizVote]:
-        connection = await redis.Redis(host='localhost', port=settings.redis_port, encoding='utf-8',
+        connection = await redis.Redis(host=settings.redis_host, port=settings.redis_port, encoding='utf-8',
                                        decode_responses=True)
 
         member_keys = await connection.keys(key_pattern)

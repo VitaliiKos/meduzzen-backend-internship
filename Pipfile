@@ -18,6 +18,7 @@ python-jose = "*"
 jwt = "*"
 pyjwt = "*"
 celery = "*"
+flower = "*"
 
 [dev-packages]
 

@@ -1,6 +1,10 @@
 version: '3.7'
+networks:
+  meduzzen:
+    name: meduzzen
 services:
   backend:
+    container_name: meduzzen_backend
     build:
       context: .
       dockerfile: Dockerfile
@@ -8,6 +12,9 @@ services:
       - .env
     ports:
       - "${APP_PORT}:${APP_PORT}"
+    #      - "5555:5555"
+    networks:
+      - meduzzen
     depends_on:
       - redis
       - postgres
@@ -20,27 +27,34 @@ services:
 
   redis:
     image: "redis:7-alpine"
+    container_name: redis
     ports:
       - "${REDIS_PORT}:${REDIS_PORT}"
     command: redis-server
     volumes:
       - cache:/data
     restart: on-failure
+    networks:
+      - meduzzen
     env_file:
       - .env
-
   postgres:
+    container_name: postgres
     image: "postgres:15-alpine"
     env_file:
       - .env
+    networks:
+      - meduzzen
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASS}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     restart: always
 volumes:
-  db:
+  postgres_data:
+  backend_data:
   cache:
-  pgadmin:

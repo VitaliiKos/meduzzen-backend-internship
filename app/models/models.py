@@ -42,9 +42,9 @@ class User(Base):
 
     # many-to-many relationship to Employee, bypassing the `Employee` class
     companies: Mapped[List['Company']] = relationship("Company", secondary='employee_table',
-                                                      back_populates="users", overlaps="firm")
+                                                      back_populates="users", overlaps="worker")
     # association between User -> Employee -> Company
-    company_employees: Mapped[List["Employee"]] = relationship("Employee", back_populates="worker")
+    company_employees: Mapped[List["Employee"]] = relationship("Employee", back_populates="worker", overlaps="companies")
     quiz_results: Mapped[List['QuizResult']] = relationship("QuizResult", back_populates="user")
 
 
@@ -60,7 +60,7 @@ class Company(Base):
 
     # many-to-many relationship to Parent, bypassing the `Association` class
     users: Mapped[List["User"]] = relationship("User", secondary="employee_table", back_populates="companies",
-                                               overlaps="firm")
+                                               overlaps="company_employees,worker")
 
     # association between Child -> Association -> Parent
     user_employees: Mapped[List["Employee"]] = relationship("Employee", back_populates="firm",

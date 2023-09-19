@@ -15,5 +15,5 @@ async def get_all_my_notifications(skip: int = 0, limit: int = 5,
 
 @router.get("/my_notifications/{notif_id}")
 async def read_notification_by_id(notif_id: int, service: NotificationService = Depends()):
-    notification = await service.get_notification_by_id(notif_id=notif_id)
+    notification = await service.read_notification_by_id(notif_id=notif_id)
     return notification

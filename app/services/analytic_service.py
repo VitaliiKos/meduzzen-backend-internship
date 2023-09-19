@@ -122,8 +122,7 @@ class AnalyticsService:
         ]
         return attempts
 
-    async def members_last_attempt(self, company_id: int, skip: int, limit: int) \
-            -> List[EmployeeLastQuizCompletionTime]:
+    async def members_last_attempt(self, company_id: int, skip: int) -> List[EmployeeLastQuizCompletionTime]:
         query = (
             select(
                 EmployeeModel,
@@ -138,8 +137,9 @@ class AnalyticsService:
             .group_by(EmployeeModel.id)
         )
 
-        result = await self.session.execute(query.offset(skip).limit(limit))
+        result = await self.session.execute(query.offset(skip))
         rows = result.all()
+
 
         employee_last_quiz_completion_times = []
 
